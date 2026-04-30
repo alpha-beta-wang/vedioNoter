@@ -1,35 +1,59 @@
 # Video to Markdown —— 视频转文字笔记
 
-将 MP4 视频批量转录为带时间戳的 Markdown 笔记。引擎基于 [whisper.cpp](https://github.com/ggml-org/whisper.cpp)（本地运行，无需联网，无需 GPU），配合 ffmpeg 进行音频预处理。
+将 MP4 视频批量转录为 Markdown 笔记，并通过大模型整理为结构化学习笔记。
+
+**本地引擎**：基于 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 进行语音识别（无需联网、无需 GPU），配合 ffmpeg 进行音频预处理。
+
+**智能整理**：调用 DeepSeek API 将原始转录整理为结构清晰的学习笔记。
 
 ## 功能
 
+### 语音转录 (`transcribe.py`)
 - 自动提取视频中的音频（16kHz 单声道 WAV）
 - 使用 Whisper 模型进行语音识别（支持中/英/日等 99 种语言）
-- 生成结构化的 Markdown 笔记：
-  - **转录全文**：连续段落，便于通读
-  - **带时间戳的转录**：每段标注时间码，便于定位回看
-- 音频缓存：同一视频的音频只提取一次，重复运行跳过提取步骤
-- 已生成笔记跳过：`--skip-existing` 参数避免重复转录
+- 生成带时间戳的原始转录 Markdown
+
+### 笔记整理 (`summarize.py` / `summarizer/` 包)
+- 调用 DeepSeek v4 Pro API，将转录全文整理为结构化学习笔记
+- 自动修正同音错字、去除口语冗余、提炼核心要点
+- 按逻辑重新分段，添加标题层级
+- 保留全部技术术语和专业内容
+- 末尾附「核心要点」总结
+- 自动处理超长文本（分块 + 合并）
+
+### 全流程脚本 (`run_all.py`)
+- 一键执行「转码 → 整理」两个步骤
+- 适合批量处理多个视频
+
+### 通用特性
+- 音频缓存：同一视频音频只提取一次
+- 增量处理：`--skip-existing` 跳过已处理文件
+- uv 一键配置环境
 
 ## 文件夹架构
 
 ```
 vedio_extract/
-├── setup.sh                 # 一键环境配置脚本
-├── transcribe.py            # 主转码脚本
-├── requirements.txt         # Python 依赖（当前仅需标准库）
-├── README.md                # 本文件
-├── vedio/                   # [用户] 放入待转录的 .mp4 视频
-├── output/                  # [输出] 转录结果 .md 笔记
-├── audio_temp/              # [缓存] 提取的中间音频文件（WAV）
+├── setup.sh                       # 一键环境配置脚本 (uv + tools)
+├── run_all.py                     # 全流程脚本 (转码 → 整理)
+├── transcribe.py                  # 视频转码脚本
+├── summarize.py                   # 笔记整理脚本
+├── summarizer/                    # 笔记整理 Python 包
+│   ├── __init__.py                # 包入口
+│   ├── api.py                     # DeepSeek API 客户端
+│   ├── prompts.py                 # 提示词模板
+│   ├── processor.py               # 核心处理逻辑
+│   └── io.py                      # 文件读写
+├── requirements.txt               # Python 依赖
+├── README.md                      # 本文件
+├── vedio/                         # [用户] 放入待转录的 .mp4 视频
+├── output/                        # [输出] 转录 .md 和笔记 .note.md
+├── audio_temp/                    # [缓存] 提取的中间音频文件 (WAV)
 ├── tools/
-│   ├── whisper-cpp/Release/ # whisper.cpp 预编译二进制
-│   │   └── whisper-cli.exe
-│   ├── ffmpeg/              # ffmpeg 静态构建
-│   │   └── ffmpeg.exe
-│   └── ggml-small.bin       # Whisper 模型文件
-└── .venv/                   # Python 虚拟环境（uv 管理）
+│   ├── whisper-cpp/Release/       # whisper.cpp 预编译二进制
+│   ├── ffmpeg/                    # ffmpeg 静态构建
+│   └── ggml-small.bin            # Whisper 模型文件
+└── .venv/                         # Python 虚拟环境 (uv 管理)
 ```
 
 ## 环境依赖
@@ -42,10 +66,15 @@ vedio_extract/
 | **whisper.cpp** | 语音识别引擎 | setup.sh 自动下载 |
 | **ffmpeg** | 视频音频提取 | setup.sh 自动下载 |
 | **ggml-*.bin** | Whisper 模型权重 | setup.sh 自动下载 |
+| **requests** | DeepSeek API 调用 (HTTP) | setup.sh 自动安装 |
 
 ### Python 依赖
 
-当前版本仅使用 Python 标准库（`argparse`, `csv`, `subprocess`, `pathlib` 等），无需额外 pip 包。`requirements.txt` 保留供未来扩展。
+```
+requests>=2.25.0
+```
+
+`transcribe.py` 仅使用标准库，无需额外 pip 包。`summarizer/api.py` 使用 `requests` 直调 DeepSeek API（HTTP 请求），避免 C 扩展依赖。
 
 ## 快速开始
 
@@ -56,15 +85,16 @@ vedio_extract/
 bash setup.sh
 
 # 或指定其他模型
-bash setup.sh medium       # 更大更准 (1.5GB)
-bash setup.sh base         # 更小更快 (148MB)
-bash setup.sh large-v3-turbo  # 最强 (1.6GB)
+bash setup.sh medium           # 更大更准 (1.5GB)
+bash setup.sh base             # 更小更快 (148MB)
+bash setup.sh large-v3-turbo   # 最强 (1.6GB)
 ```
 
 `setup.sh` 会自动完成：
 - 安装 [uv](https://docs.astral.sh/uv/)（Python 包管理器）
 - 创建 Python 3.11 虚拟环境
-- 下载 whisper.cpp 预编译二进制（匹配当前操作系统）
+- 安装 `openai` 等 pip 依赖
+- 下载 whisper.cpp 预编译二进制
 - 下载 Whisper 模型文件
 - 下载 ffmpeg 静态构建
 
@@ -72,38 +102,72 @@ bash setup.sh large-v3-turbo  # 最强 (1.6GB)
 
 将待转录的 `.mp4` 文件放入 `vedio/` 文件夹。
 
-### 3. 运行转录
+### 3. 运行
 
 ```bash
-# 中文视频（指定语言可提升准确率）
+# --- 方式一：全流程一键运行（推荐）---
+uv run python run_all.py --language zh
+
+# --- 方式二：分步运行 ---
+# Step 1: 视频转码
 uv run python transcribe.py --language zh
 
-# 自动检测语言
-uv run python transcribe.py
+# Step 2: 整理为学习笔记
+uv run python summarize.py output/
 
-# 使用更大模型（更准但更慢）
-uv run python transcribe.py --model medium --language zh
-
-# 跳过已有笔记，增量处理
-uv run python transcribe.py --language zh --skip-existing
+# --- 方式三：仅转码 ---
+uv run python run_all.py --language zh --skip-summarize
 ```
 
 ### 4. 查看结果
 
-转录笔记输出在 `output/` 目录，文件名与视频同名（`.mp4` → `.md`）。
+| 输出文件 | 说明 |
+|---|---|
+| `output/<视频名>.md` | 原始转录（全文 + 时间戳） |
+| `output/<视频名>.note.md` | 结构化学习笔记 |
 
 ## 使用说明
 
+### transcribe.py —— 视频转码
+
 ```
-用法: transcribe.py [选项]
+用法: uv run python transcribe.py [选项]
 
 选项:
-  --model MODEL      Whisper 模型大小 (默认: small)
-                     可选: tiny, base, small, medium, large-v3, large-v3-turbo
-                     英文优化版: tiny.en, base.en, small.en, medium.en
-  --language LANG    语言代码 (zh/en/ja...)，不指定则自动检测
-  --threads N        线程数 (默认: CPU 核心数)
-  --skip-existing    跳过 output/ 中已有同名 md 的视频
+  --model MODEL       Whisper 模型 (默认: small)
+                      可选: tiny, base, small, medium, large-v3, large-v3-turbo
+  --language LANG     语言代码 (zh/en/ja...)，不指定则自动检测
+  --threads N         线程数 (默认: CPU 核心数)
+  --skip-existing     跳过 output/ 中已有同名 .md 的视频
+```
+
+### summarize.py —— 笔记整理
+
+```
+用法: uv run python summarize.py <文件或目录> [选项]
+
+参数:
+  target              转录 .md 文件或 output/ 目录
+
+选项:
+  --api-key KEY       DeepSeek API key (默认读取 DEEPSEEK_API_KEY)
+  --model MODEL       LLM 模型 (默认: deepseek-v4-pro)
+  --skip-existing     跳过已有 .note.md 的文件
+  --output-dir DIR    笔记输出目录 (默认与转录文件同目录)
+```
+
+### run_all.py —— 全流程
+
+```
+用法: uv run python run_all.py [选项]
+
+选项:
+  --language LANG     语言代码 (zh/en/ja...)
+  --model MODEL       Whisper 模型 (默认: small)
+  --api-key KEY       DeepSeek API key
+  --llm-model MODEL   LLM 模型 (默认: deepseek-v4-pro)
+  --skip-existing     跳过已处理的文件
+  --skip-summarize    仅转码，不整理笔记
 ```
 
 ### 模型选择指南
@@ -119,54 +183,69 @@ uv run python transcribe.py --language zh --skip-existing
 
 ## 代码逻辑
 
-`transcribe.py` 对每个视频执行三步流水线：
+### transcribe.py —— 三步流水线
 
-### 第 1 步：音频提取 (`extract_audio`)
-
-```python
+**第 1 步：音频提取** (`extract_audio`)
+```bash
 ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 16000 -ac 1 -y audio.wav
 ```
+丢弃视频流，编码为 16-bit PCM 单声道 16kHz WAV，缓存到 `audio_temp/`。
 
-- 丢弃视频流 (`-vn`)
-- 编码为 16-bit PCM
-- 重采样到 16kHz（Whisper 要求的采样率）
-- 合并为单声道
-- 输出 WAV 缓存到 `audio_temp/`
-
-### 第 2 步：语音识别 (`transcribe_with_whisper_cpp`)
-
-```
+**第 2 步：语音识别** (`transcribe_with_whisper_cpp`)
+```bash
 whisper-cli -m model.bin -f audio.wav -ocsv -of output_prefix
 ```
+调用 whisper.cpp CLI 输出 CSV（`start_ms, end_ms, text`），实时回显进度，解析为 segment 列表。
 
-- 调用 whisper.cpp 的 CLI 二进制
-- 以 CSV 格式输出（`start_ms, end_ms, text`）
-- 实时回显进度行
-- 解析 CSV，构建 segment 列表（含 `start`, `end`, `text` 字段）
-
-### 第 3 步：生成笔记 (`build_markdown`)
-
-- **转录全文**：将所有 segment 的 `text` 拼接为连续段落
-- **带时间戳的转录**：逐行输出 `- [MM:SS] text`
+**第 3 步：生成笔记** (`build_markdown`)
+- 拼接所有 segment 为连续全文
+- 逐段输出带时间戳文本
 - 写入 `output/<视频名>.md`
 
-### 异常处理
+### summarizer/ 包 —— 模块架构
 
-- 音频提取失败 → 打印错误，跳过该视频继续下一个
-- 转录失败（whisper-cli 非零退出码）→ 打印错误，跳过
-- 无语音内容（空 segments）→ 生成空笔记占位
+```
+summarizer/
+├── api.py        # DeepSeek API 客户端（requests 直调 DeepSeek API）
+├── prompts.py    # 提示词模板（SYSTEM_PROMPT + build_user_prompt）
+├── processor.py  # 核心逻辑：文本分块 → API 调用 → 结果合并
+└── io.py         # 文件 IO：reads transcript from .md, writes .note.md
+```
+
+**调用流程**：
+
+```
+process_file(md_path)
+  │
+  ├─ io.read_transcript_text()          # 从 .md 提取「转录全文」
+  ├─ io.read_metadata()                 # 读取标题、时长
+  │
+  └─ summarize_transcript(text, title)
+       │
+       ├─ _split_text()                 # 超长文本按段落分块
+       │
+       ├─ for each chunk:
+       │     api.chat(client, prompt)   # 调用 DeepSeek API
+       │
+       └─ _merge_chunk_results()        # 多块结果二次合并整理
+             │
+             └─ io.write_note()         # 写入 .note.md
+```
+
+**提示词设计思路**：
+- System prompt 定义角色（学术笔记整理专家）和六项职责（修正错误、结构化、提炼要点、保留术语、去冗余、加小结）
+- User prompt 传入视频标题和转录全文
+- 使用 `reasoning_effort="high"` 和 `thinking: enabled` 提升整理质量
 
 ## 手动配置（不使用 setup.sh）
 
-如果需要手动搭建环境：
-
 ```bash
-# 1. 创建虚拟环境
+# 1. 创建虚拟环境并安装依赖
 uv venv --python 3.11
-# 或: python -m venv .venv
+uv pip install -r requirements.txt
 
 # 2. 创建工具目录
-mkdir -p tools/whisper-cpp tools/ffmpeg
+mkdir -p tools/whisper-cpp/Release tools/ffmpeg
 
 # 3. 下载 whisper.cpp
 # https://github.com/ggml-org/whisper.cpp/releases
@@ -177,9 +256,12 @@ mkdir -p tools/whisper-cpp tools/ffmpeg
 # 将 ggml-small.bin 放入 tools/
 
 # 5. 下载 ffmpeg
-# Windows: https://www.gyan.dev/ffmpeg/builds/
-# 将 ffmpeg.exe 放入 tools/ffmpeg/
+# https://www.gyan.dev/ffmpeg/builds/ (Windows)
+# 将 ffmpeg 放入 tools/ffmpeg/
 
-# 6. 运行
-uv run python transcribe.py --language zh
+# 6. 设置 API key
+export DEEPSEEK_API_KEY="sk-xxx"
+
+# 7. 运行
+uv run python run_all.py --language zh
 ```
