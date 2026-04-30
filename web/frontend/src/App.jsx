@@ -53,15 +53,27 @@ function Dashboard({ videos, loading, refresh }) {
   };
 
   const handleTranscribe = async (video) => {
-    const { task_id } = await startTranscribe(video.name);
-    setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "transcribe", status: "running", progress: 0 } }));
-    pollLoop(task_id);
+    try {
+      const { task_id } = await startTranscribe(video.name);
+      setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "transcribe", status: "running", progress: 0, error: null } }));
+      pollLoop(task_id);
+    } catch (e) {
+      const tid = "err-" + Math.random().toString(36).slice(2, 8);
+      setTasks((prev) => ({ ...prev, [tid]: { ...video, type: "transcribe", status: "failed", progress: 0, error: "无法连接到后端服务，请确认已启动 python web/backend/server.py" } }));
+      setTimeout(() => setTasks((prev) => { const n = { ...prev }; delete n[tid]; return n; }), 6000);
+    }
   };
 
   const handleSummarize = async (video) => {
-    const { task_id } = await startSummarize(video.name);
-    setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "summarize", status: "running", progress: 0 } }));
-    pollLoop(task_id);
+    try {
+      const { task_id } = await startSummarize(video.name);
+      setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "summarize", status: "running", progress: 0, error: null } }));
+      pollLoop(task_id);
+    } catch (e) {
+      const tid = "err-" + Math.random().toString(36).slice(2, 8);
+      setTasks((prev) => ({ ...prev, [tid]: { ...video, type: "summarize", status: "failed", progress: 0, error: "无法连接到后端服务，请确认已启动 python web/backend/server.py" } }));
+      setTimeout(() => setTasks((prev) => { const n = { ...prev }; delete n[tid]; return n; }), 6000);
+    }
   };
 
   const pollLoop = async (taskId) => {
@@ -71,6 +83,7 @@ function Dashboard({ videos, loading, refresh }) {
         setTasks((prev) => ({ ...prev, [taskId]: t }));
         if (t.status === "completed" || t.status === "failed") {
           refresh();
+          setTimeout(() => setTasks((prev) => { const n = { ...prev }; delete n[taskId]; return n; }), t.status === "completed" ? 4000 : 8000);
           return;
         }
       } catch (e) { /* ignore */ }
@@ -85,10 +98,12 @@ function Dashboard({ videos, loading, refresh }) {
       <UploadZone onUpload={handleUpload} uploading={uploading} />
 
       {/* Active tasks */}
-      {Object.entries(tasks).map(([id, t]) =>
-        t.status === "running" || t.status === "pending" ? (
-          <TaskCard key={id} task={t} />
-        ) : null
+      {Object.entries(tasks).length > 0 && (
+        <div className="mt-3 space-y-3">
+          {Object.entries(tasks).map(([id, t]) => (
+            <TaskCard key={id} task={t} />
+          ))}
+        </div>
       )}
 
       {/* Video list */}
@@ -224,22 +239,41 @@ function Btn({ onClick, children, title, accent, danger }) {
    Task Card (progress bar)
    ================================================================ */
 function TaskCard({ task }) {
-  const icon = task.type === "summarize" ? "✨" : "🎙️";
-  const label = task.type === "summarize" ? "AI 整理中" : "语音识别中";
+  const isFailed = task.status === "failed";
+  const isCompleted = task.status === "completed";
+
+  const icon = isFailed ? "❌" : isCompleted ? "✅" : task.type === "summarize" ? "✨" : "🎙️";
+  const label = isFailed
+    ? (task.error ? "任务失败" : "任务失败")
+    : isCompleted
+      ? (task.type === "summarize" ? "整理完成" : "转录完成")
+      : task.type === "summarize"
+        ? "AI 整理中"
+        : "语音识别中";
+
+  const barColor = isFailed ? "bg-rose-500" : isCompleted ? "bg-emerald-500" : "bg-indigo-500";
+  const borderColor = isFailed ? "border-rose-500/20" : isCompleted ? "border-emerald-500/20" : "border-indigo-500/20";
+
   return (
-    <div className="mt-3 p-4 rounded-xl bg-[var(--surface)] border border-indigo-500/20 animate-slide-in">
+    <div className={`p-4 rounded-xl bg-[var(--surface)] border ${borderColor} animate-slide-in`}>
       <div className="flex items-center gap-2 mb-2 text-sm">
         <span>{icon}</span>
         <span className="font-medium">{label}</span>
-        <span className="text-[var(--text-muted)] text-xs ml-1">{task.video?.name || task.video}</span>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">{task.progress}%</span>
+        <span className="text-[var(--text-muted)] text-xs ml-1 truncate">{task.video?.name || task.video}</span>
+        <span className="ml-auto text-xs text-[var(--text-muted)] flex-shrink-0">{task.progress}%</span>
       </div>
       <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
         <div
-          className="h-full rounded-full bg-indigo-500 transition-all duration-500"
-          style={{ width: `${task.progress}%` }}
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${isFailed ? 100 : task.progress}%` }}
         />
       </div>
+      {task.error && (
+        <p className="mt-2 text-xs text-rose-400">{task.error}</p>
+      )}
+      {isCompleted && task.output_file && (
+        <p className="mt-2 text-xs text-[var(--text-muted)]">已保存: {task.output_file}</p>
+      )}
     </div>
   );
 }
