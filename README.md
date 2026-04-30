@@ -25,6 +25,13 @@
 - 一键执行「转码 → 整理」两个步骤
 - 适合批量处理多个视频
 
+### Web 前端 (`web/`)
+- 现代化 React SPA 界面，拖拽上传视频
+- 实时进度条追踪转录 / 整理任务
+- 转录全文阅读 & 时间戳视图切换
+- 结构化学习笔记 Markdown 渲染
+- 暗色模式自适应
+
 ### 通用特性
 - 音频缓存：同一视频音频只提取一次
 - 增量处理：`--skip-existing` 跳过已处理文件
@@ -53,6 +60,19 @@ vedio_extract/
 │   ├── whisper-cpp/Release/       # whisper.cpp 预编译二进制
 │   ├── ffmpeg/                    # ffmpeg 静态构建
 │   └── ggml-small.bin            # Whisper 模型文件
+├── web/                           # Web 应用
+│   ├── backend/
+│   │   ├── server.py              # Flask API 服务器
+│   │   └── tasks.py               # 异步任务管理（线程池）
+│   └── frontend/
+│       ├── src/
+│       │   ├── App.jsx            # React SPA 主组件
+│       │   ├── api.js             # API 请求封装
+│       │   └── components/
+│       │       ├── Layout.jsx     # 页面布局（导航栏/页脚）
+│       │       └── UploadZone.jsx # 拖拽上传组件
+│       ├── dist/                  # 前端构建产物
+│       └── vite.config.js         # Vite 配置（含代理）
 └── .venv/                         # Python 虚拟环境 (uv 管理)
 ```
 
@@ -67,14 +87,30 @@ vedio_extract/
 | **ffmpeg** | 视频音频提取 | setup.sh 自动下载 |
 | **ggml-*.bin** | Whisper 模型权重 | setup.sh 自动下载 |
 | **requests** | DeepSeek API 调用 (HTTP) | setup.sh 自动安装 |
+| **flask** | Web API 服务器 | setup.sh 自动安装 |
+| **flask-cors** | 跨域支持 | setup.sh 自动安装 |
+| **Node.js / npm** | 前端构建 (可选) | 手动安装 |
 
 ### Python 依赖
 
 ```
 requests>=2.25.0
+flask>=3.0.0
+flask-cors>=4.0.0
+imageio-ffmpeg>=0.5.0
 ```
 
-`transcribe.py` 仅使用标准库，无需额外 pip 包。`summarizer/api.py` 使用 `requests` 直调 DeepSeek API（HTTP 请求），避免 C 扩展依赖。
+`transcribe.py` 仅使用标准库，无需额外 pip 包。`summarizer/api.py` 使用 `requests` 直调 DeepSeek API（HTTP 请求），避免 C 扩展依赖。`flask` 用于 Web API 服务器。
+
+### 前端依赖
+
+| 组件 | 用途 |
+|---|---|
+| **React 19** | UI 框架 |
+| **React Router 7** | 客户端路由 |
+| **Tailwind CSS v4** | 原子化 CSS 框架 |
+| **Vite 8** | 前端构建工具 |
+| **lucide-react** | 图标库（预留） |
 
 ## 快速开始
 
@@ -93,7 +129,7 @@ bash setup.sh large-v3-turbo   # 最强 (1.6GB)
 `setup.sh` 会自动完成：
 - 安装 [uv](https://docs.astral.sh/uv/)（Python 包管理器）
 - 创建 Python 3.11 虚拟环境
-- 安装 `openai` 等 pip 依赖
+- 安装 pip 依赖（flask, requests 等）
 - 下载 whisper.cpp 预编译二进制
 - 下载 Whisper 模型文件
 - 下载 ffmpeg 静态构建
@@ -125,6 +161,25 @@ uv run python run_all.py --language zh --skip-summarize
 |---|---|
 | `output/<视频名>.md` | 原始转录（全文 + 时间戳） |
 | `output/<视频名>.note.md` | 结构化学习笔记 |
+
+### 5. (可选) 启动 Web 界面
+
+```bash
+# 构建前端（首次或前端代码修改后需要）
+cd web/frontend && npm install && npm run build && cd ../..
+
+# 启动后端服务器
+uv run python web/backend/server.py
+
+# 浏览器访问 http://localhost:8765
+```
+
+Web 界面功能：
+- **拖拽上传** .mp4 视频
+- **一键转码**：启动语音识别任务，实时进度条
+- **一键整理**：启动 AI 笔记整理任务
+- **在线查看**：转录全文 / 时间戳视图切换
+- **笔记阅读**：结构化学习笔记 Markdown 渲染
 
 ## 使用说明
 

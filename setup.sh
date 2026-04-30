@@ -123,7 +123,7 @@ fi
 # ============================================================
 # Step 5: 下载 ffmpeg
 # ============================================================
-info "Step 5/5: 下载 ffmpeg ..."
+info "Step 5/6: 下载 ffmpeg ..."
 FFMPEG_DIR="$SCRIPT_DIR/tools/ffmpeg"
 FFMPEG_EXE="$FFMPEG_DIR/ffmpeg"
 
@@ -179,6 +179,29 @@ else
 fi
 
 # ============================================================
+# Step 6: 构建 Web 前端
+# ============================================================
+info "Step 6/6: 构建 Web 前端 ..."
+
+FRONTEND_DIR="$SCRIPT_DIR/web/frontend"
+
+if [ -f "$FRONTEND_DIR/dist/index.html" ]; then
+    ok "前端构建产物已存在，跳过（如需重建请手动 cd web/frontend && npm run build）"
+else
+    if command -v npm &>/dev/null; then
+        info "安装前端依赖并构建..."
+        (cd "$FRONTEND_DIR" && npm install && npm run build) || \
+            info "前端构建失败（可稍后手动构建: cd web/frontend && npm install && npm run build）"
+        if [ -f "$FRONTEND_DIR/dist/index.html" ]; then
+            ok "前端构建完成"
+        fi
+    else
+        info "未检测到 Node.js / npm，跳过后端构建"
+        info "请安装 Node.js 后手动构建前端: cd web/frontend && npm install && npm run build"
+    fi
+fi
+
+# ============================================================
 # 完成
 # ============================================================
 echo ""
@@ -193,9 +216,14 @@ echo "    tools/ffmpeg/       - ffmpeg 音频提取"
 echo "    .venv/              - Python 虚拟环境"
 echo "    vedio/              - 放入待转录的 .mp4 视频"
 echo "    output/             - 转录结果 .md 输出"
+echo "    web/frontend/dist/  - 前端构建产物"
 echo ""
 echo -e "  运行转录:"
 echo -e "    ${CYAN}uv run python transcribe.py --language zh${NC}"
+echo ""
+echo -e "  启动 Web 界面:"
+echo -e "    ${CYAN}uv run python web/backend/server.py${NC}"
+echo -e "    然后访问 ${CYAN}http://localhost:8765${NC}"
 echo ""
 echo "  更多选项:"
 echo "    uv run python transcribe.py --model medium --language zh"

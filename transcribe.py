@@ -58,9 +58,13 @@ def transcribe_with_whisper_cpp(
     whisper_exe: Path,
     language: str | None,
     output_dir: Path,
+    progress_callback: callable | None = None,
 ) -> list[dict]:
-    """调用 whisper-cli.exe 转录，返回 segment 列表。"""
-    # 输出 CSV 到临时前缀
+    """调用 whisper-cli.exe 转录，返回 segment 列表。
+
+    Args:
+        progress_callback: 可选，接收 0-100 整数进度百分比
+    """
     csv_prefix = output_dir / "temp_whisper"
 
     cmd = [
@@ -69,12 +73,11 @@ def transcribe_with_whisper_cpp(
         "-f", str(audio_path),
         "-ocsv",
         "-of", str(csv_prefix),
-        "-pp",          # 输出进度
+        "-pp",
     ]
     if language:
         cmd += ["-l", language]
 
-    # 运行 whisper-cli，实时显示进度
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -84,17 +87,23 @@ def transcribe_with_whisper_cpp(
         errors="replace",
     )
 
-    # 逐行输出进度（whisper 将进度写入 stderr，合并后输出）
+    import re
     last_progress = ""
     for line in proc.stdout:
-        line = line.strip()
-        # whisper.cpp 的进度行通常包含时间信息
-        if line and ("[" in line or "ms" in line.lower() or "s" in line):
-            if line != last_progress:
-                print(f"\r  {line[:80]}", end="", flush=True)
-                last_progress = line
+        line_stripped = line.strip()
+        # 解析 whisper.cpp 的进度百分比行
+        m = re.search(r"progress\s*=\s*(\d+)%", line_stripped)
+        if m:
+            pct = int(m.group(1))
+            if progress_callback:
+                progress_callback(pct)
+        elif line_stripped and ("[" in line_stripped or "ms" in line_stripped):
+            # 控制台回显转录片段
+            if line_stripped != last_progress:
+                print(f"\r  {line_stripped[:80]}", end="", flush=True)
+                last_progress = line_stripped
     proc.wait()
-    print()  # 换行
+    print()
 
     if proc.returncode != 0:
         raise RuntimeError(f"whisper-cli 退出码 {proc.returncode}")
