@@ -141,26 +141,26 @@ function Dashboard({ videos, loading, refresh }) {
    ================================================================ */
 function VideoCard({ video, onTranscribe, onSummarize, onDelete, onViewTranscript, onViewNote }) {
   return (
-    <div className="group flex items-center gap-4 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-all duration-200 animate-slide-in">
+    <div className="group flex items-center gap-3 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-all duration-200 animate-slide-in overflow-hidden">
       {/* Icon */}
-      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+        <svg className="w-4.5 h-4.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
         </svg>
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{video.name.replace(".mp4", "")}</div>
-        <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)]">
-          <span>{video.size_mb} MB</span>
+        <div className="font-medium truncate text-sm">{video.name.replace(".mp4", "")}</div>
+        <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
+          <span className="flex-shrink-0">{video.size_mb} MB</span>
           {video.has_transcript && (
-            <span className="flex items-center gap-1 text-emerald-500">
+            <span className="flex items-center gap-1 text-emerald-500 flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> 已转码
             </span>
           )}
           {video.has_note && (
-            <span className="flex items-center gap-1 text-violet-500">
+            <span className="flex items-center gap-1 text-violet-500 flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-500" /> 已整理
             </span>
           )}
@@ -168,7 +168,7 @@ function VideoCard({ video, onTranscribe, onSummarize, onDelete, onViewTranscrip
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {video.has_transcript && (
           <Btn onClick={onViewTranscript} title="查看转录">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
