@@ -56,10 +56,10 @@ def transcribe_with_whisper_cpp(
     audio_path: Path,
     model_path: Path,
     whisper_exe: Path,
-    language: str | None,
+    language: "str | None",
     output_dir: Path,
-    progress_callback: callable | None = None,
-) -> list[dict]:
+    progress_callback: "callable | None" = None,
+) -> "list[dict]":
     """调用 whisper-cli.exe 转录，返回 segment 列表。
 
     Args:
