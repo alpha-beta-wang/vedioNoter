@@ -126,6 +126,7 @@ def start_summarization(
     md_path: Path,
     project_dir: Path,
     api_key: str,
+    style: str = "general",
 ) -> str:
     """启动笔记整理任务，返回 task_id。"""
     task_id = str(uuid.uuid4())
@@ -143,20 +144,20 @@ def start_summarization(
 
     thread = threading.Thread(
         target=_run_summarization,
-        args=(task_id, md_path, project_dir, api_key),
+        args=(task_id, md_path, project_dir, api_key, style),
         daemon=True,
     )
     thread.start()
     return task_id
 
 
-def _run_summarization(task_id: str, md_path: Path, project_dir: Path, api_key: str):
+def _run_summarization(task_id: str, md_path: Path, project_dir: Path, api_key: str, style: str = "general"):
     try:
         _update(task_id, status="running", progress=10, message="读取转录...")
 
         from summarizer.io import read_transcript_text, read_metadata
         from summarizer.api import create_client, chat
-        from summarizer.prompts import SYSTEM_PROMPT, build_user_prompt
+        from summarizer.prompts import get_system_prompt, build_user_prompt
 
         transcript = read_transcript_text(md_path)
         if not transcript:
@@ -169,7 +170,7 @@ def _run_summarization(task_id: str, md_path: Path, project_dir: Path, api_key: 
 
         client = create_client(api_key)
         user_msg = build_user_prompt(transcript, title)
-        note = chat(client, SYSTEM_PROMPT, user_msg)
+        note = chat(client, get_system_prompt(style), user_msg)
 
         _update(task_id, progress=90, message="保存笔记...")
 

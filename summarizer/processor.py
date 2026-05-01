@@ -5,7 +5,7 @@ from pathlib import Path
 
 from summarizer.api import create_client, chat
 from summarizer.io import read_transcript_text, read_metadata
-from summarizer.prompts import SYSTEM_PROMPT, build_user_prompt
+from summarizer.prompts import get_system_prompt, build_user_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def _split_by_sentence(text: str, max_chars: int) -> list[str]:
 
 
 def _call_api_for_chunk(
-    client, title: str, chunk: str, chunk_idx: int, total: int
+    client, title: str, chunk: str, chunk_idx: int, total: int, style: str = "general",
 ) -> str:
     """对单个文本块调用 API。"""
     if total > 1:
@@ -70,10 +70,10 @@ def _call_api_for_chunk(
     else:
         user_msg = build_user_prompt(chunk, title)
 
-    return chat(client, SYSTEM_PROMPT, user_msg)
+    return chat(client, get_system_prompt(style), user_msg)
 
 
-def _merge_chunk_results(results: list[str], title: str, client) -> str:
+def _merge_chunk_results(results: list[str], title: str, client, style: str = "general") -> str:
     """将多个分块的结果合并整理为统一笔记。"""
     if len(results) == 1:
         return results[0]
@@ -88,7 +88,7 @@ def _merge_chunk_results(results: list[str], title: str, client) -> str:
 
 {combined}
 """
-    return chat(client, SYSTEM_PROMPT, merge_prompt)
+    return chat(client, get_system_prompt(style), merge_prompt)
 
 
 def summarize_transcript(
@@ -97,6 +97,7 @@ def summarize_transcript(
     api_key: str | None = None,
     base_url: str = "https://api.deepseek.com",
     model: str = "deepseek-v4-pro",
+    style: str = "general",
 ) -> str:
     """将转录全文整理为结构化学习笔记。
 
@@ -124,13 +125,13 @@ def summarize_transcript(
     results = []
     for i, chunk in enumerate(chunks):
         logger.info("处理第 %d/%d 块 (%d 字符)...", i + 1, len(chunks), len(chunk))
-        result = _call_api_for_chunk(client, title, chunk, i, len(chunks))
+        result = _call_api_for_chunk(client, title, chunk, i, len(chunks), style)
         results.append(result)
         logger.info("第 %d 块完成", i + 1)
 
     if len(results) > 1:
         logger.info("合并 %d 块结果...", len(results))
-        final = _merge_chunk_results(results, title, client)
+        final = _merge_chunk_results(results, title, client, style)
     else:
         final = results[0]
 
@@ -143,6 +144,7 @@ def process_file(
     base_url: str = "https://api.deepseek.com",
     model: str = "deepseek-v4-pro",
     output_dir: Path | None = None,
+    style: str = "general",
 ) -> Path | None:
     """处理单个转录 .md 文件：读取、整理、写出笔记。
 
@@ -167,7 +169,7 @@ def process_file(
     logger.info("开始整理: %s (%d 字符)", title, len(transcript))
 
     try:
-        note = summarize_transcript(transcript, title, api_key, base_url, model)
+        note = summarize_transcript(transcript, title, api_key, base_url, model, style)
     except Exception as e:
         logger.error("API 调用失败: %s", e)
         return None

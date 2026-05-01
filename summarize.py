@@ -70,6 +70,12 @@ def main():
         help="模型名称",
     )
     parser.add_argument(
+        "--style",
+        default="general",
+        choices=["general", "stem"],
+        help="笔记风格: general (通用) / stem (理工科) (默认: general)",
+    )
+    parser.add_argument(
         "--skip-existing",
         action="store_true",
         help="跳过已有 .note.md 的文件",
@@ -109,6 +115,7 @@ def main():
             base_url=args.base_url,
             model=args.model,
             output_dir=out_dir,
+            style=args.style,
         )
         if result:
             print(f"  [OK] 笔记已保存: {result.name}")

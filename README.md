@@ -15,6 +15,9 @@
 
 ### 笔记整理 (`summarize.py` / `summarizer/` 包)
 - 调用 DeepSeek v4 Pro API，将转录全文整理为结构化学习笔记
+- 两套提示词风格：
+  - **通用**：适合一般技术内容，修正错字、提炼要点、去除冗余
+  - **理工科**：适合数理课程，保留推导过程、直觉解释、公式、类比和作者风格
 - 自动修正同音错字、去除口语冗余、提炼核心要点
 - 按逻辑重新分段，添加标题层级
 - 保留全部技术术语和专业内容
@@ -27,6 +30,8 @@
 
 ### Web 前端 (`web/`)
 - 现代化 React SPA 界面，拖拽上传视频
+- 转录语言可选：中文 / English / 自动检测
+- 笔记风格可选：通用 / 理工科
 - 实时进度条追踪转录 / 整理任务
 - 转录全文阅读 & 时间戳视图切换
 - 结构化学习笔记 Markdown 渲染
@@ -176,8 +181,8 @@ uv run python web/backend/server.py
 
 Web 界面功能：
 - **拖拽上传** .mp4 视频
-- **一键转码**：启动语音识别任务，实时进度条
-- **一键整理**：启动 AI 笔记整理任务
+- **一键转码**：启动语音识别任务，实时进度条，可选择转录语言
+- **一键整理**：启动 AI 笔记整理任务，可选择「通用」或「理工科」风格
 - **在线查看**：转录全文 / 时间戳视图切换
 - **笔记阅读**：结构化学习笔记 Markdown 渲染
 
@@ -207,6 +212,7 @@ Web 界面功能：
 选项:
   --api-key KEY       DeepSeek API key (默认读取 DEEPSEEK_API_KEY)
   --model MODEL       LLM 模型 (默认: deepseek-v4-pro)
+  --style STYLE       笔记风格: general (通用) / stem (理工科) (默认: general)
   --skip-existing     跳过已有 .note.md 的文件
   --output-dir DIR    笔记输出目录 (默认与转录文件同目录)
 ```
@@ -221,6 +227,7 @@ Web 界面功能：
   --model MODEL       Whisper 模型 (默认: small)
   --api-key KEY       DeepSeek API key
   --llm-model MODEL   LLM 模型 (默认: deepseek-v4-pro)
+  --style STYLE       笔记风格: general (通用) / stem (理工科) (默认: general)
   --skip-existing     跳过已处理的文件
   --skip-summarize    仅转码，不整理笔记
 ```
@@ -262,8 +269,8 @@ whisper-cli -m model.bin -f audio.wav -ocsv -of output_prefix
 ```
 summarizer/
 ├── api.py        # DeepSeek API 客户端（requests 直调 DeepSeek API）
-├── prompts.py    # 提示词模板（SYSTEM_PROMPT + build_user_prompt）
-├── processor.py  # 核心逻辑：文本分块 → API 调用 → 结果合并
+├── prompts.py    # 提示词模板（通用 SYSTEM_PROMPT / 理工科 STEM_SYSTEM_PROMPT + build_user_prompt）
+├── processor.py  # 核心逻辑：文本分块 → API 调用 → 结果合并，支持 style 参数切换提示词
 └── io.py         # 文件 IO：reads transcript from .md, writes .note.md
 ```
 
@@ -288,7 +295,9 @@ process_file(md_path)
 ```
 
 **提示词设计思路**：
-- System prompt 定义角色（学术笔记整理专家）和六项职责（修正错误、结构化、提炼要点、保留术语、去冗余、加小结）
+- 两套 System prompt，通过 `--style` 或前端开关切换：
+  - **通用 (general)**：角色为学术笔记整理专家，六项职责（修正错误、结构化、提炼要点、保留术语、去冗余、加小结）
+  - **理工科 (stem)**：角色为数理工科视频笔记整理专家，重点保留推导过程、直觉解释、公式、类比、作者风格，不压缩结论，推荐章节结构与通用不同
 - User prompt 传入视频标题和转录全文
 - 使用 `reasoning_effort="high"` 和 `thinking: enabled` 提升整理质量
 

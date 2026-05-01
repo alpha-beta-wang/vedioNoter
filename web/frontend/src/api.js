@@ -19,8 +19,12 @@ export function startTranscribe(name, model = "small", language = "") {
     body: JSON.stringify({ model, language }),
   });
 }
-export function startSummarize(name) {
-  return request(`/summarize/${encodeURIComponent(name)}`, { method: "POST" });
+export function startSummarize(name, style = "general") {
+  return request(`/summarize/${encodeURIComponent(name)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ style }),
+  });
 }
 export function pollTask(taskId)   { return request(`/tasks/${taskId}`); }
 export function getTranscript(name){ return request(`/transcript/${encodeURIComponent(name)}`); }

@@ -36,6 +36,7 @@ function Dashboard({ videos, loading, refresh }) {
   const [uploading, setUploading] = useState(false);
   const [tasks, setTasks] = useState({});
   const [language, setLanguage] = useState("zh");
+  const [sumStyle, setSumStyle] = useState("general");
 
   const handleUpload = async (file) => {
     setUploading(true);
@@ -67,7 +68,7 @@ function Dashboard({ videos, loading, refresh }) {
 
   const handleSummarize = async (video) => {
     try {
-      const { task_id } = await startSummarize(video.name);
+      const { task_id } = await startSummarize(video.name, sumStyle);
       setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "summarize", status: "running", progress: 0, error: null } }));
       pollLoop(task_id);
     } catch (e) {
@@ -118,10 +119,11 @@ function Dashboard({ videos, loading, refresh }) {
           </h2>
           <div className="flex items-center gap-2">
             {/* Language selector */}
+            <span className="text-xs text-[var(--text-muted)]">转录</span>
             <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
               {[
                 { value: "zh", label: "中文" },
-                { value: "en", label: "English" },
+                { value: "en", label: "EN" },
                 { value: "auto", label: "自动" },
               ].map((opt) => (
                 <button
@@ -130,6 +132,26 @@ function Dashboard({ videos, loading, refresh }) {
                   className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     language === opt.value
                       ? "bg-indigo-500 text-white"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {/* Style selector */}
+            <span className="text-xs text-[var(--text-muted)] ml-2">笔记</span>
+            <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
+              {[
+                { value: "general", label: "通用" },
+                { value: "stem", label: "理工科" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSumStyle(opt.value)}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    sumStyle === opt.value
+                      ? "bg-violet-500 text-white"
                       : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
                   }`}
                 >

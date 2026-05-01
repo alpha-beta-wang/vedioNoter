@@ -49,6 +49,8 @@ def main():
                         help="DeepSeek API key")
     parser.add_argument("--llm-model", default="deepseek-v4-pro",
                         help="LLM 模型名称")
+    parser.add_argument("--style", default="general", choices=["general", "stem"],
+                        help="笔记风格: general (通用) / stem (理工科) (默认: general)")
     parser.add_argument("--skip-existing", action="store_true",
                         help="跳过已处理的文件")
     parser.add_argument("--skip-summarize", action="store_true",
@@ -88,6 +90,8 @@ def main():
         summarize_args += ["--model", args.llm_model]
     if args.skip_existing:
         summarize_args.append("--skip-existing")
+    if args.style:
+        summarize_args += ["--style", args.style]
 
     ok = run_step("Step 2/2: 转录整理 → 学习笔记", summarize_args)
     if not ok:

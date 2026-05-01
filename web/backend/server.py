@@ -115,8 +115,9 @@ def start_summarize(name: str):
     api_key = data.get("api_key") or os.environ.get(
         "DEEPSEEK_API_KEY", ""
     )
+    style = data.get("style") or "general"
 
-    task_id = start_summarization(md_path, PROJECT_DIR, api_key)
+    task_id = start_summarization(md_path, PROJECT_DIR, api_key, style)
     return jsonify({"task_id": task_id})
 
 
