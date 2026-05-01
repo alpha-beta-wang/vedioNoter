@@ -35,6 +35,7 @@ function Dashboard({ videos, loading, refresh }) {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [tasks, setTasks] = useState({});
+  const [language, setLanguage] = useState("zh");
 
   const handleUpload = async (file) => {
     setUploading(true);
@@ -54,7 +55,7 @@ function Dashboard({ videos, loading, refresh }) {
 
   const handleTranscribe = async (video) => {
     try {
-      const { task_id } = await startTranscribe(video.name);
+      const { task_id } = await startTranscribe(video.name, "small", language);
       setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "transcribe", status: "running", progress: 0, error: null } }));
       pollLoop(task_id);
     } catch (e) {
@@ -115,12 +116,34 @@ function Dashboard({ videos, loading, refresh }) {
               {videos.length} 个视频
             </span>
           </h2>
-          <button
-            onClick={refresh}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] hover:bg-[var(--border)] transition-colors"
-          >
-            刷新
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Language selector */}
+            <div className="flex rounded-lg border border-[var(--border)] overflow-hidden">
+              {[
+                { value: "zh", label: "中文" },
+                { value: "en", label: "English" },
+                { value: "auto", label: "自动" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLanguage(opt.value)}
+                  className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    language === opt.value
+                      ? "bg-indigo-500 text-white"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={refresh}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] hover:bg-[var(--border)] transition-colors"
+            >
+              刷新
+            </button>
+          </div>
         </div>
 
         {loading ? (

@@ -95,7 +95,8 @@ def start_transcribe(name: str):
 
     data = request.get_json(silent=True) or {}
     model = data.get("model", "small")
-    language = data.get("language", "")
+    lang = data.get("language") or None
+    language = lang if lang and lang != "auto" else None
 
     task_id = start_transcription(video_path, PROJECT_DIR, model, language or None)
     return jsonify({"task_id": task_id})
