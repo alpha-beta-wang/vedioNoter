@@ -2,3 +2,6 @@
 .venv/
 tools/
 *.pyc
+vedio/
+output/
+audio_temp/
