@@ -12,6 +12,7 @@
 - 自动提取视频中的音频（16kHz 单声道 WAV）
 - 使用 Whisper 模型进行语音识别（支持中/英/日等 99 种语言）
 - 生成带时间戳的原始转录 Markdown
+- 可选提取关键帧（场景检测），按时间戳嵌入笔记作为图示
 
 ### 笔记整理 (`summarize.py` / `summarizer/` 包)
 - 调用 DeepSeek v4 Pro API，将转录全文整理为结构化学习笔记
@@ -40,6 +41,7 @@
 ### 通用特性
 - 音频缓存：同一视频音频只提取一次
 - 增量处理：`--skip-existing` 跳过已处理文件
+- 关键帧提取（可选）：ffmpeg 场景检测，按时间戳嵌入笔记
 - uv 一键配置环境
 
 ## 文件夹架构
@@ -199,6 +201,7 @@ Web 界面功能：
   --language LANG     语言代码 (zh/en/ja...)，不指定则自动检测
   --threads N         线程数 (默认: CPU 核心数)
   --skip-existing     跳过 output/ 中已有同名 .md 的视频
+  --extract-frames    提取关键帧并嵌入笔记（场景检测，默认不提取）
 ```
 
 ### summarize.py —— 笔记整理
@@ -230,6 +233,7 @@ Web 界面功能：
   --style STYLE       笔记风格: general (通用) / stem (理工科) (默认: general)
   --skip-existing     跳过已处理的文件
   --skip-summarize    仅转码，不整理笔记
+  --extract-frames    提取关键帧并嵌入笔记
 ```
 
 ### 模型选择指南
@@ -262,7 +266,18 @@ whisper-cli -m model.bin -f audio.wav -ocsv -of output_prefix
 **第 3 步：生成笔记** (`build_markdown`)
 - 拼接所有 segment 为连续全文
 - 逐段输出带时间戳文本
+- 若启用关键帧提取，按时间戳将帧图片嵌入对应段落
+- 末尾追加「关键图示」章节列出全部帧
 - 写入 `output/<视频名>.md`
+
+**可选：关键帧提取** (`extract_keyframes`)
+```bash
+ffmpeg -i video.mp4 -vf "select='gt(scene,0.3)',showinfo" -vsync vfr -f null NUL
+# 解析场景变化时间戳 → 选取 top 20 代表性时刻 → 逐帧提取 JPEG
+```
+- 第一遍：场景检测，获取变化点时间戳列表
+- 第二遍：逐时刻 `-ss` seek 提取帧，输出到 `output/frames/<视频名>/`
+- 通过 `--extract-frames` 启用，前端通过「帧」开关控制
 
 ### summarizer/ 包 —— 模块架构
 
