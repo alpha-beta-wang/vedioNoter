@@ -5,10 +5,17 @@ from pathlib import Path
 
 import yaml
 
-_CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
+_ROOT = Path(__file__).resolve().parent
+_CONFIG_PATH = _ROOT / "config.yaml"
+_EXAMPLE_PATH = _ROOT / "config.example.yaml"
 
-with open(_CONFIG_PATH, "r", encoding="utf-8") as _f:
-    _cfg = yaml.safe_load(_f)
+if _CONFIG_PATH.exists():
+    with open(_CONFIG_PATH, "r", encoding="utf-8") as _f:
+        _cfg = yaml.safe_load(_f)
+else:
+    # 首次使用：从模板复制
+    with open(_EXAMPLE_PATH, "r", encoding="utf-8") as _f:
+        _cfg = yaml.safe_load(_f)
 
 
 # -----------------------------------------------------------
