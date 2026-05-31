@@ -12,11 +12,11 @@ async function request(url, opts = {}) {
 export function listVideos()       { return request("/videos"); }
 export function uploadVideo(file)  { const fd = new FormData(); fd.append("file", file); return request("/upload", { method: "POST", body: fd }); }
 export function deleteVideo(name)  { return request(`/videos/${encodeURIComponent(name)}`, { method: "DELETE" }); }
-export function startTranscribe(name, model = "small", language = "") {
+export function startTranscribe(name, model = "small", language = "", extractFrames = false) {
   return request(`/transcribe/${encodeURIComponent(name)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, language }),
+    body: JSON.stringify({ model, language, extract_frames: extractFrames }),
   });
 }
 export function startSummarize(name, style = "general") {

@@ -32,6 +32,7 @@ def start_transcription(
     project_dir: Path,
     model: str = "small",
     language: str | None = None,
+    extract_frames: bool = False,
 ) -> str:
     """启动转录任务，返回 task_id。"""
     task_id = str(uuid.uuid4())
@@ -49,7 +50,7 @@ def start_transcription(
 
     thread = threading.Thread(
         target=_run_transcription,
-        args=(task_id, video_path, project_dir, model, language),
+        args=(task_id, video_path, project_dir, model, language, extract_frames),
         daemon=True,
     )
     thread.start()
@@ -62,6 +63,7 @@ def _run_transcription(
     project_dir: Path,
     model: str,
     language: str | None,
+    extract_frames: bool = False,
 ):
     try:
         _update(task_id, status="running", progress=5, message="提取音频...")
@@ -98,11 +100,22 @@ def _run_transcription(
             progress_callback=progress_callback,
         )
 
-        _update(task_id, progress=90, message="生成笔记...")
+        # extract keyframes (optional)
+        keyframes = None
+        if extract_frames:
+            _update(task_id, progress=90, message="提取关键帧...")
+            from transcribe import extract_keyframes
+            ffmpeg_path = project_dir / "tools" / "ffmpeg" / "ffmpeg.exe"
+            if not ffmpeg_path.exists():
+                import imageio_ffmpeg
+                ffmpeg_path = Path(imageio_ffmpeg.get_ffmpeg_exe())
+            keyframes = extract_keyframes(video_path, output_dir, ffmpeg_path)
+
+        _update(task_id, progress=95 if extract_frames else 90, message="生成笔记...")
 
         # build markdown
         from transcribe import build_markdown
-        md_content = build_markdown(video_path, segments)
+        md_content = build_markdown(video_path, segments, keyframes)
         output_path = output_dir / f"{video_path.stem}.md"
         output_path.write_text(md_content, encoding="utf-8")
 

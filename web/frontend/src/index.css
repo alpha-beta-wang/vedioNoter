@@ -63,6 +63,14 @@ body {
 .note-content li { margin: 0.35rem 0; line-height: 1.8; }
 .note-content li::marker { color: var(--accent); }
 .note-content strong { color: var(--accent); font-weight: 600; }
+.note-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin: 1rem 0;
+  display: block;
+}
 .note-content blockquote {
   border-left: 3px solid var(--accent); margin: 1.2rem 0; padding: 0.6rem 1.2rem;
   background: color-mix(in srgb, var(--accent) 5%, transparent);

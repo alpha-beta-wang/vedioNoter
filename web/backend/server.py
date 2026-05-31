@@ -97,8 +97,9 @@ def start_transcribe(name: str):
     model = data.get("model", "small")
     lang = data.get("language") or None
     language = lang if lang and lang != "auto" else None
+    extract_frames = data.get("extract_frames", False)
 
-    task_id = start_transcription(video_path, PROJECT_DIR, model, language or None)
+    task_id = start_transcription(video_path, PROJECT_DIR, model, language or None, extract_frames)
     return jsonify({"task_id": task_id})
 
 
@@ -162,6 +163,22 @@ def get_note(name: str):
 
     raw = note_path.read_text(encoding="utf-8")
     return jsonify({"content": raw})
+
+
+# ============================================================
+# 关键帧图片
+# ============================================================
+
+FRAMES_DIR = OUTPUT_DIR / "frames"
+
+
+@app.route("/api/frames/<path:subpath>")
+def serve_frame(subpath: str):
+    """提供提取的关键帧图片。"""
+    file_path = FRAMES_DIR / subpath
+    if not file_path.exists() or not file_path.is_file():
+        return jsonify({"error": "图片不存在"}), 404
+    return send_file(str(file_path))
 
 
 # ============================================================

@@ -139,7 +139,78 @@ def transcribe_with_whisper_cpp(
 
 
 
-def build_markdown(video_path: Path, segments: list[dict]) -> str:
+def extract_keyframes(
+    video_path: Path,
+    output_dir: Path,
+    ffmpeg_path: Path,
+    threshold: float = 0.3,
+    max_frames: int = 20,
+) -> list[dict]:
+    """用 ffmpeg 场景检测提取关键帧，返回 [{time, path}, ...]。
+
+    Args:
+        video_path: 视频文件路径
+        output_dir: 帧图像输出目录
+        ffmpeg_path: ffmpeg 可执行文件路径
+        threshold: 场景变化阈值 (0-1)，越大越不敏感
+        max_frames: 最多提取帧数（取场景变化最显著的）
+    """
+    import re as _re
+
+    frames_dir = output_dir / "frames" / video_path.stem
+    frames_dir.mkdir(parents=True, exist_ok=True)
+
+    # 清空旧帧
+    for old in frames_dir.glob("*.jpg"):
+        old.unlink()
+
+    # 第一遍：用 select + showinfo 获取场景变化点的 PTS
+    cmd_detect = [
+        str(ffmpeg_path),
+        "-i", str(video_path),
+        "-vf", f"select='gt(scene\\,{threshold})',showinfo",
+        "-vsync", "vfr",
+        "-f", "null",
+        "-y", "NUL",
+    ]
+
+    proc = subprocess.run(cmd_detect, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    timestamps = []
+    for line in proc.stderr.split("\n"):
+        m = _re.search(r"pts_time:(\d+\.?\d*)", line)
+        if m:
+            timestamps.append(float(m.group(1)))
+
+    if not timestamps:
+        return []
+
+    # 限制帧数：取间隔最大的 top N（保证覆盖全视频）
+    if len(timestamps) > max_frames:
+        step = len(timestamps) / max_frames
+        timestamps = [timestamps[int(i * step)] for i in range(max_frames)]
+
+    # 第二遍：在检测到的时刻提取帧
+    result = []
+    for i, t in enumerate(timestamps):
+        ts_str = format_timestamp(t).replace(":", "-")
+        out_path = frames_dir / f"{i + 1:02d}_{ts_str}.jpg"
+        cmd_extract = [
+            str(ffmpeg_path),
+            "-ss", str(t),
+            "-i", str(video_path),
+            "-vframes", "1",
+            "-q:v", "2",
+            "-y",
+            str(out_path),
+        ]
+        subprocess.run(cmd_extract, capture_output=True, check=True)
+        result.append({"time": t, "path": out_path, "index": i + 1})
+
+    return result
+
+
+def build_markdown(video_path: Path, segments: list[dict], keyframes: list[dict] | None = None) -> str:
     """根据转录 segments 生成 Markdown。"""
     if not segments:
         return f"# {video_path.stem}\n\n*(未识别到语音内容)*\n"
@@ -158,11 +229,28 @@ def build_markdown(video_path: Path, segments: list[dict]) -> str:
     full_text = " ".join(seg["text"] for seg in segments)
     md += f"{full_text}\n\n"
 
-    # 带时间戳
+    # 带时间戳（含关键帧插图）
     md += "## 带时间戳的转录\n\n"
     for seg in segments:
         ts = format_timestamp(seg["start"])
         md += f"- [{ts}] {seg['text']}\n"
+
+        # 检查是否有关键帧落在当前 segment 时间范围内
+        if keyframes:
+            seg_start = seg["start"]
+            seg_end = seg["end"]
+            for kf in keyframes:
+                if seg_start <= kf["time"] < seg_end:
+                    rel_path = f"frames/{video_path.stem}/{kf['path'].name}"
+                    md += f"  ![帧 {kf['index']} — {format_timestamp(kf['time'])}]({rel_path})\n"
+
+    # 关键帧汇总
+    if keyframes:
+        md += "\n## 关键图示\n\n"
+        md += f"共提取 {len(keyframes)} 个关键帧：\n\n"
+        for kf in keyframes:
+            rel_path = f"frames/{video_path.stem}/{kf['path'].name}"
+            md += f"- [{format_timestamp(kf['time'])}] ![帧 {kf['index']}]({rel_path})\n"
 
     return md
 
@@ -184,6 +272,8 @@ def main():
                         help="线程数（默认 CPU 核心数）")
     parser.add_argument("--skip-existing", action="store_true",
                         help="跳过已有对应 md 的视频")
+    parser.add_argument("--extract-frames", action="store_true",
+                        help="提取关键帧并嵌入笔记（场景检测）")
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent
@@ -262,10 +352,16 @@ def main():
 
         print(f"  [OK] 识别到 {len(segments)} 个片段，总时长 {format_timestamp(segments[-1]['end'])}")
 
-        # 3. 生成 Markdown
-        print("  [3/3] 生成笔记 ...")
+        # 3. 提取关键帧（可选）+ 生成 Markdown
+        step_label = "提取关键帧 & 生成笔记" if args.extract_frames else "生成笔记"
+        print(f"  [3/3] {step_label} ...")
         try:
-            md_content = build_markdown(video_path, segments)
+            keyframes = None
+            if args.extract_frames:
+                keyframes = extract_keyframes(video_path, output_dir, ffmpeg_path)
+                if keyframes:
+                    print(f"  [OK] 提取了 {len(keyframes)} 个关键帧")
+            md_content = build_markdown(video_path, segments, keyframes)
             output_path.write_text(md_content, encoding="utf-8")
         except Exception as e:
             print(f"  [X] 笔记生成失败: {e}")

@@ -55,6 +55,8 @@ def main():
                         help="跳过已处理的文件")
     parser.add_argument("--skip-summarize", action="store_true",
                         help="只转码，不整理笔记")
+    parser.add_argument("--extract-frames", action="store_true",
+                        help="提取关键帧并嵌入笔记")
     args = parser.parse_args()
 
     # ---- Step 1: 视频转码 ----
@@ -69,6 +71,8 @@ def main():
         transcribe_args += ["--threads", str(args.threads)]
     if args.skip_existing:
         transcribe_args.append("--skip-existing")
+    if args.extract_frames:
+        transcribe_args.append("--extract-frames")
 
     ok = run_step("Step 1/2: 视频转码 → 语音转录", transcribe_args)
     if not ok:

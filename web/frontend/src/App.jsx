@@ -37,6 +37,7 @@ function Dashboard({ videos, loading, refresh }) {
   const [tasks, setTasks] = useState({});
   const [language, setLanguage] = useState("zh");
   const [sumStyle, setSumStyle] = useState("general");
+  const [extractFrames, setExtractFrames] = useState(false);
 
   const handleUpload = async (file) => {
     setUploading(true);
@@ -56,7 +57,7 @@ function Dashboard({ videos, loading, refresh }) {
 
   const handleTranscribe = async (video) => {
     try {
-      const { task_id } = await startTranscribe(video.name, "small", language);
+      const { task_id } = await startTranscribe(video.name, "small", language, extractFrames);
       setTasks((prev) => ({ ...prev, [task_id]: { ...video, type: "transcribe", status: "running", progress: 0, error: null } }));
       pollLoop(task_id);
     } catch (e) {
@@ -159,6 +160,18 @@ function Dashboard({ videos, loading, refresh }) {
                 </button>
               ))}
             </div>
+            {/* Keyframe toggle */}
+            <button
+              onClick={() => setExtractFrames(!extractFrames)}
+              title="提取关键帧作为图示"
+              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                extractFrames
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-600"
+                  : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--border)]"
+              }`}
+            >
+              帧
+            </button>
             <button
               onClick={refresh}
               className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] hover:bg-[var(--border)] transition-colors"
@@ -355,13 +368,18 @@ function TranscriptPage() {
   if (loading) return <div className="animate-fade-in p-8 text-center text-[var(--text-muted)]">加载中...</div>;
   if (!data) return <div className="animate-fade-in p-8 text-center text-rose-400">转录不存在</div>;
 
-  // Parse timestamped lines
+  // Parse timestamped lines (including inline images)
   const tsLines = [];
   const tsSection = data.timestamped || "";
   const lines = tsSection.split("\n");
   for (const line of lines) {
     const m = line.match(/^- \[(\d{2}:\d{2}(?::\d{2})?)\]\s+(.+)/);
-    if (m) tsLines.push({ time: m[1], text: m[2] });
+    if (m) {
+      tsLines.push({ type: "text", time: m[1], text: m[2] });
+    } else {
+      const img = line.match(/^\s*!\[([^\]]*)\]\(([^)]+)\)/);
+      if (img) tsLines.push({ type: "image", alt: img[1], src: img[2].replace(/^frames\//, "/api/frames/") });
+    }
   }
 
   // Parse full text (remove markdown headers for display)
@@ -382,16 +400,23 @@ function TranscriptPage() {
       {/* Tabs */}
       <Tabs labels={["全文阅读", "时间戳视图"]}>
         {/* Tab 1: Full text */}
-        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-6 md:p-8 leading-loose text-[0.95rem] whitespace-pre-line">
-          {fullText}
-        </div>
+        <div
+          className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-6 md:p-8 leading-loose text-[0.95rem] note-content"
+          dangerouslySetInnerHTML={{ __html: mdToHtml(fullText) }}
+        />
 
         {/* Tab 2: Timestamped */}
         <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 md:p-6">
           {tsLines.map((line, i) => (
-            <div key={i} className="ts-line">
-              <span className="ts">{line.time}</span>
-              {line.text}
+            <div key={i} className={line.type === "image" ? "py-2" : "ts-line"}>
+              {line.type === "image" ? (
+                <img src={line.src} alt={line.alt} className="max-w-full rounded-lg border border-[var(--border)]" loading="lazy" />
+              ) : (
+                <>
+                  <span className="ts">{line.time}</span>
+                  {line.text}
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -470,6 +495,7 @@ function mdToHtml(md) {
   html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
   html = html.replace(/^---$/gm, "<hr>");
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
   html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
   html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
   html = html.replace(/<\/li>\n<li>/g, "</li><li>");
@@ -484,6 +510,8 @@ function mdToHtml(md) {
   html = html.replace(/<p><blockquote>/g, "<blockquote>");
   html = html.replace(/<\/blockquote><\/p>/g, "</blockquote>");
   html = html.replace(/<p>\s*<\/p>/g, "");
+  // Rewrite relative frame paths to API route
+  html = html.replace(/src="frames\//g, 'src="/api/frames/');
   return html;
 }
 
