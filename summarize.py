@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+from config import get_api_base_url, get_api_key, get_llm_model
 from summarizer import process_file, summarize_transcript
 
 logger = logging.getLogger("summarize")
@@ -31,9 +32,6 @@ logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
-
-# 在这里填入 API_KEY 
-DEFAULT_API_KEY = ""
 
 
 def find_transcript_files(target: Path) -> list[Path]:
@@ -56,17 +54,17 @@ def main():
     )
     parser.add_argument(
         "--api-key",
-        default=os.environ.get("DEEPSEEK_API_KEY", DEFAULT_API_KEY),
-        help="DeepSeek API key（默认读取 DEEPSEEK_API_KEY 环境变量）",
+        default=get_api_key(),
+        help="DeepSeek API key（默认读取 config.yaml 或 DEEPSEEK_API_KEY 环境变量）",
     )
     parser.add_argument(
         "--base-url",
-        default="https://api.deepseek.com",
+        default=get_api_base_url(),
         help="API 地址",
     )
     parser.add_argument(
         "--model",
-        default="deepseek-v4-pro",
+        default=get_llm_model(),
         help="模型名称",
     )
     parser.add_argument(

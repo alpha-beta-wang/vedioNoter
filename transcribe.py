@@ -11,6 +11,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from config import (
+    get_available_whisper_models,
+    get_max_keyframes,
+    get_scene_threshold,
+    get_whisper_model,
+)
+
 # 强制 UTF-8 输出，避免 Windows GBK 终端编码问题
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -143,8 +150,8 @@ def extract_keyframes(
     video_path: Path,
     output_dir: Path,
     ffmpeg_path: Path,
-    threshold: float = 0.3,
-    max_frames: int = 20,
+    threshold: float | None = None,
+    max_frames: int | None = None,
 ) -> list[dict]:
     """用 ffmpeg 场景检测提取关键帧，返回 [{time, path}, ...]。
 
@@ -156,6 +163,11 @@ def extract_keyframes(
         max_frames: 最多提取帧数（取场景变化最显著的）
     """
     import re as _re
+
+    if threshold is None:
+        threshold = get_scene_threshold()
+    if max_frames is None:
+        max_frames = get_max_keyframes()
 
     frames_dir = output_dir / "frames" / video_path.stem
     frames_dir.mkdir(parents=True, exist_ok=True)
@@ -261,11 +273,9 @@ def build_markdown(video_path: Path, segments: list[dict], keyframes: list[dict]
 
 def main():
     parser = argparse.ArgumentParser(description="视频转文字笔记 —— whisper.cpp 引擎")
-    parser.add_argument("--model", default="small",
-                        choices=["tiny", "tiny.en", "base", "base.en",
-                                 "small", "small.en", "medium", "medium.en",
-                                 "large-v1", "large-v2", "large-v3", "large-v3-turbo"],
-                        help="Whisper 模型（默认 small）")
+    parser.add_argument("--model", default=get_whisper_model(),
+                        choices=get_available_whisper_models(),
+                        help=f"Whisper 模型（默认 {get_whisper_model()}）")
     parser.add_argument("--language", default=None,
                         help="语言代码 (zh/en/ja...)，不指定则自动检测")
     parser.add_argument("--threads", default=None, type=int,

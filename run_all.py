@@ -40,14 +40,16 @@ def main():
     # 转码参数
     parser.add_argument("--language", default=None,
                         help="语言代码 (zh/en/ja...)")
-    parser.add_argument("--model", default="small",
-                        help="Whisper 模型大小 (默认 small)")
+    from config import get_llm_model, get_whisper_model
+
+    parser.add_argument("--model", default=get_whisper_model(),
+                        help=f"Whisper 模型大小 (默认 {get_whisper_model()})")
     parser.add_argument("--threads", default=None, type=int,
                         help="CPU 线程数")
     # 笔记整理参数
     parser.add_argument("--api-key", default=None,
                         help="DeepSeek API key")
-    parser.add_argument("--llm-model", default="deepseek-v4-pro",
+    parser.add_argument("--llm-model", default=get_llm_model(),
                         help="LLM 模型名称")
     parser.add_argument("--style", default="general", choices=["general", "stem"],
                         help="笔记风格: general (通用) / stem (理工科) (默认: general)")

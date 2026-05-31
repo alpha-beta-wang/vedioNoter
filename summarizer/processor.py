@@ -3,18 +3,18 @@
 import logging
 from pathlib import Path
 
+from config import get_max_chars_per_chunk
 from summarizer.api import create_client, chat
 from summarizer.io import read_transcript_text, read_metadata
 from summarizer.prompts import get_system_prompt, build_user_prompt
 
 logger = logging.getLogger(__name__)
 
-# 单次 API 调用的最大输入字符数（DeepSeek v4 支持长上下文，此处做保守限制）
-MAX_CHARS_PER_CHUNK = 30000
 
-
-def _split_text(text: str, max_chars: int = MAX_CHARS_PER_CHUNK) -> list[str]:
+def _split_text(text: str, max_chars: int | None = None) -> list[str]:
     """按段落边界拆分超长文本，尽量在句号处断开。"""
+    if max_chars is None:
+        max_chars = get_max_chars_per_chunk()
     if len(text) <= max_chars:
         return [text]
 
@@ -95,8 +95,8 @@ def summarize_transcript(
     transcript: str,
     title: str = "未命名",
     api_key: str | None = None,
-    base_url: str = "https://api.deepseek.com",
-    model: str = "deepseek-v4-pro",
+    base_url: str | None = None,
+    model: str | None = None,
     style: str = "general",
 ) -> str:
     """将转录全文整理为结构化学习笔记。
@@ -141,8 +141,8 @@ def summarize_transcript(
 def process_file(
     md_path: Path,
     api_key: str | None = None,
-    base_url: str = "https://api.deepseek.com",
-    model: str = "deepseek-v4-pro",
+    base_url: str | None = None,
+    model: str | None = None,
     output_dir: Path | None = None,
     style: str = "general",
 ) -> Path | None:

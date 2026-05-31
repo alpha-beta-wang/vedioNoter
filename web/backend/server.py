@@ -11,6 +11,7 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
+from config import get_api_key, get_server_host, get_server_port
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 
@@ -113,9 +114,7 @@ def start_summarize(name: str):
         return jsonify({"error": "转录文件不存在，请先转码"}), 404
 
     data = request.get_json(silent=True) or {}
-    api_key = data.get("api_key") or os.environ.get(
-        "DEEPSEEK_API_KEY", ""
-    )
+    api_key = data.get("api_key") or get_api_key()
     style = data.get("style") or "general"
 
     task_id = start_summarization(md_path, PROJECT_DIR, api_key, style)
@@ -203,10 +202,12 @@ def serve_frontend(path: str):
 
 
 def main():
-    print(f"启动服务: http://localhost:8765")
+    host = get_server_host()
+    port = get_server_port()
+    print(f"启动服务: http://localhost:{port}")
     print(f"视频目录: {VEDIO_DIR}")
     print(f"输出目录: {OUTPUT_DIR}")
-    app.run(host="0.0.0.0", port=8765, debug=True)
+    app.run(host=host, port=port, debug=True)
 
 
 if __name__ == "__main__":

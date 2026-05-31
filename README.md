@@ -58,6 +58,8 @@ vedio_extract/
 │   ├── prompts.py                 # 提示词模板
 │   ├── processor.py               # 核心处理逻辑
 │   └── io.py                      # 文件读写
+├── config.yaml                    # 全局配置文件（模型、API、服务器等）
+├── config.py                      # 配置加载模块
 ├── requirements.txt               # Python 依赖
 ├── README.md                      # 本文件
 ├── vedio/                         # [用户] 放入待转录的 .mp4 视频
@@ -96,6 +98,7 @@ vedio_extract/
 | **requests** | DeepSeek API 调用 (HTTP) | setup.sh 自动安装 |
 | **flask** | Web API 服务器 | setup.sh 自动安装 |
 | **flask-cors** | 跨域支持 | setup.sh 自动安装 |
+| **pyyaml** | 配置文件解析 | setup.sh 自动安装 |
 | **Node.js / npm** | 前端构建 (可选) | 手动安装 |
 
 ### Python 依赖
@@ -105,6 +108,7 @@ requests>=2.25.0
 flask>=3.0.0
 flask-cors>=4.0.0
 imageio-ffmpeg>=0.5.0
+pyyaml>=6.0
 ```
 
 `transcribe.py` 仅使用标准库，无需额外 pip 包。`summarizer/api.py` 使用 `requests` 直调 DeepSeek API（HTTP 请求），避免 C 扩展依赖。`flask` 用于 Web API 服务器。
@@ -187,6 +191,46 @@ Web 界面功能：
 - **一键整理**：启动 AI 笔记整理任务，可选择「通用」或「理工科」风格
 - **在线查看**：转录全文 / 时间戳视图切换
 - **笔记阅读**：结构化学习笔记 Markdown 渲染
+
+## 配置说明
+
+所有可配置项集中在项目根目录的 `config.yaml` 中，修改后立即生效，无需改动代码：
+
+```yaml
+# config.yaml
+deepseek:
+  api_key: ""                         # 留空则读取环境变量 DEEPSEEK_API_KEY
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-v4-pro"
+  max_chars_per_chunk: 30000
+
+whisper:
+  model: "small"                      # 默认语音识别模型
+
+keyframe:
+  scene_threshold: 0.3                # 场景检测灵敏度
+  max_frames: 20                      # 最多提取帧数
+
+server:
+  host: "0.0.0.0"
+  port: 8765
+```
+
+| 配置方式 | 优先级 | 说明 |
+|---|---|---|
+| 环境变量 `DEEPSEEK_API_KEY` | 最高 | 覆盖 config.yaml 中的 api_key |
+| `config.yaml` | 默认 | 修改后即时生效 |
+| CLI 参数 `--api-key` / `--model` | 运行时可覆盖 | 优先级高于配置文件 |
+
+### 更改模型
+
+```bash
+# 方法一：修改 config.yaml
+# whisper.model: "medium"
+
+# 方法二：CLI 参数覆盖
+uv run python transcribe.py --model medium --language zh
+```
 
 ## 使用说明
 
