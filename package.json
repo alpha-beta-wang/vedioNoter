@@ -7,6 +7,7 @@
     "desktop": "cd desktop && npm start",
     "desktop:dev": "cd desktop && npm run dev",
     "build:exe": "cd desktop && node build.cjs",
+    "build:installer": "cd desktop && npx electron-builder --win --x64",
     "build:frontend": "cd web/frontend && npm run build"
   }
 }

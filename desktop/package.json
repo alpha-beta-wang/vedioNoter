@@ -1,5 +1,7 @@
 {
   "name": "video-extract-desktop",
+  "productName": "Video Extract",
+  "appId": "com.videoextract.desktop",
   "version": "1.0.0",
   "description": "Video Extract 跨平台桌面客户端 (Win & Mac)",
   "main": "main.cjs",
@@ -7,7 +9,41 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "build:exe": "node build.cjs"
+    "build:exe": "node build.cjs",
+    "dist:installer": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.videoextract.desktop",
+    "productName": "Video Extract",
+    "directories": {
+      "output": "../release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "pythonManager.cjs",
+      "package.json",
+      "icons/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icons/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Video Extract",
+      "runAfterFinish": true
+    }
   },
   "devDependencies": {
     "electron": "^20.18.3"
