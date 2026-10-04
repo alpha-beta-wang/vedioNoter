@@ -1,0 +1,12 @@
+{
+  "name": "video-extract-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Video Extract 跨平台桌面客户端与核心引擎 (Win & Mac)",
+  "scripts": {
+    "desktop": "cd desktop && npm start",
+    "desktop:dev": "cd desktop && npm run dev",
+    "build:exe": "cd desktop && node build.cjs",
+    "build:frontend": "cd web/frontend && npm run build"
+  }
+}

@@ -1,8 +1,35 @@
-.claude
+# 虚拟环境与依赖包
 .venv/
+venv/
+node_modules/
+desktop/node_modules/
+web/frontend/node_modules/
+
+# 编译与打包构建产物
+dist/
+dist-desktop/
+release/
+web/frontend/dist/
+.vite/
+*.py[cod]
+__pycache__/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 本地数据、模型与配置密钥
 tools/
-*.pyc
 vedio/
 output/
 audio_temp/
 config.yaml
+
+# 操作系统与 IDE 缓存
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+.claude/
+.gemini/

@@ -29,3 +29,11 @@ export function startSummarize(name, style = "general") {
 export function pollTask(taskId)   { return request(`/tasks/${taskId}`); }
 export function getTranscript(name){ return request(`/transcript/${encodeURIComponent(name)}`); }
 export function getNote(name)      { return request(`/note/${encodeURIComponent(name)}`); }
+
+// 桌面端专属接口
+export function getConfig()         { return request("/config"); }
+export function updateConfig(data)  { return request("/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); }
+export function openFolder(type, name) { return request("/open-folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, name }) }); }
+export function importFile(path)    { return request("/import-file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path }) }); }
+export function getSystemInfo()     { return request("/system-info"); }
+

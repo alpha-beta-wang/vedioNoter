@@ -1,0 +1,15 @@
+{
+  "name": "video-extract-desktop",
+  "version": "1.0.0",
+  "description": "Video Extract 跨平台桌面客户端 (Win & Mac)",
+  "main": "main.cjs",
+  "author": "Antigravity",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:exe": "node build.cjs"
+  },
+  "devDependencies": {
+    "electron": "^20.18.3"
+  }
+}

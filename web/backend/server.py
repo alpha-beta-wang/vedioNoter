@@ -181,6 +181,120 @@ def serve_frame(subpath: str):
 
 
 # ============================================================
+# 桌面与系统管理接口 (Desktop API)
+# ============================================================
+
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    """桌面端探针接口。"""
+    return jsonify({"status": "ok", "platform": sys.platform})
+
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    """获取系统当前配置。"""
+    from config import get_raw_config
+    return jsonify(get_raw_config())
+
+
+@app.route("/api/config", methods=["POST"])
+def update_config():
+    """更新配置并写回 config.yaml。"""
+    from config import get_raw_config, save_config
+    data = request.get_json(silent=True) or {}
+    current = get_raw_config()
+    for section in ["deepseek", "whisper", "keyframe", "server"]:
+        if section in data and isinstance(data[section], dict):
+            current.setdefault(section, {}).update(data[section])
+    save_config(current)
+    return jsonify({"ok": True, "config": current})
+
+
+@app.route("/api/open-folder", methods=["POST"])
+def open_folder():
+    """跨平台在系统文件管理器中打开或定位目录/文件（Win Explorer / macOS Finder）。"""
+    import platform
+    import subprocess
+
+    data = request.get_json(silent=True) or {}
+    target_type = data.get("type", "output")
+    file_name = data.get("name")
+
+    if target_type == "output":
+        target = OUTPUT_DIR
+    elif target_type == "vedio":
+        target = VEDIO_DIR
+    else:
+        target = PROJECT_DIR
+
+    if file_name:
+        candidate = target / file_name
+        if candidate.exists():
+            target = candidate
+
+    try:
+        os_name = platform.system()
+        if os_name == "Windows":
+            if target.is_file():
+                subprocess.Popen(["explorer.exe", f"/select,{str(target)}"])
+            else:
+                subprocess.Popen(["explorer.exe", str(target)])
+        elif os_name == "Darwin":  # macOS
+            if target.is_file():
+                subprocess.Popen(["open", "-R", str(target)])
+            else:
+                subprocess.Popen(["open", str(target)])
+        else:  # Linux
+            subprocess.Popen(["xdg-open", str(target.parent if target.is_file() else target)])
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/import-file", methods=["POST"])
+def import_local_file():
+    """桌面端直接导入本地视频文件（复制到 vedio 目录）。"""
+    data = request.get_json(silent=True) or {}
+    file_path = data.get("path")
+    if not file_path:
+        return jsonify({"error": "缺少文件路径"}), 400
+
+    src = Path(file_path)
+    if not src.exists() or not src.is_file():
+        return jsonify({"error": "指定的文件不存在"}), 404
+
+    allowed_exts = {".mp4", ".mov", ".mkv", ".flv", ".webm", ".avi"}
+    if src.suffix.lower() not in allowed_exts:
+        return jsonify({"error": f"不支持的文件格式: {src.suffix}"}), 400
+
+    dest = VEDIO_DIR / src.name
+    if not dest.exists():
+        shutil.copy2(str(src), str(dest))
+
+    return jsonify({
+        "name": dest.name,
+        "size_mb": round(dest.stat().st_size / 1024 / 1024, 1),
+    })
+
+
+@app.route("/api/system-info", methods=["GET"])
+def system_info():
+    """返回操作系统、硬件及底层推理工具状态。"""
+    import platform
+    whisper_exe = PROJECT_DIR / "tools" / "whisper-cpp" / "Release" / ("whisper-cli.exe" if platform.system() == "Windows" else "whisper-cli")
+    ffmpeg_exe = PROJECT_DIR / "tools" / "ffmpeg" / ("ffmpeg.exe" if platform.system() == "Windows" else "ffmpeg")
+
+    return jsonify({
+        "os": platform.system(),
+        "arch": platform.machine(),
+        "cpu_count": os.cpu_count() or 1,
+        "whisper_ready": whisper_exe.exists() or bool(shutil.which("whisper-cli")),
+        "ffmpeg_ready": ffmpeg_exe.exists() or bool(shutil.which("ffmpeg")),
+        "models": [p.stem.replace("ggml-", "") for p in (PROJECT_DIR / "tools").glob("ggml-*.bin")],
+    })
+
+
+# ============================================================
 # 静态文件（前端构建产物）
 # ============================================================
 

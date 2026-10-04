@@ -76,3 +76,17 @@ def get_server_port() -> int:
     if env_port:
         return int(env_port)
     return _cfg["server"]["port"]
+
+
+def get_raw_config() -> dict:
+    """获取完整配置字典。"""
+    return _cfg
+
+
+def save_config(new_config: dict) -> None:
+    """将新配置写回 config.yaml。"""
+    global _cfg
+    with open(_CONFIG_PATH, "w", encoding="utf-8") as _f:
+        yaml.safe_dump(new_config, _f, allow_unicode=True, sort_keys=False)
+    _cfg = new_config
+
