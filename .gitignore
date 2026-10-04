@@ -2,13 +2,16 @@
 .venv/
 venv/
 node_modules/
+**/node_modules/
 desktop/node_modules/
 web/frontend/node_modules/
 
 # 编译与打包构建产物
 dist/
+**/dist/
 dist-desktop/
 release/
+**/release/
 web/frontend/dist/
 .vite/
 *.py[cod]
