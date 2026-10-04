@@ -1,390 +1,216 @@
-# Video to Markdown —— 视频转文字笔记
+# Video to Markdown —— Video Speech Transcription & AI Note Generator
 
-将 MP4 视频批量转录为 Markdown 笔记，并通过大模型整理为结构化学习笔记。
+[English](README.md) | [简体中文](README_CN.md)
 
-**本地引擎**：基于 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 进行语音识别（无需联网、无需 GPU），配合 ffmpeg 进行音频预处理。
+Batch transcribe MP4 videos into high-precision Markdown documents, and transform raw transcripts into comprehensive, structured academic study notes using Large Language Models. Supports CLI workflow, Web interface, and **native desktop applications for Windows & macOS**.
 
-**智能整理**：调用 DeepSeek API 将原始转录整理为结构清晰的学习笔记。
+* **Local Offline Engine**: Powered by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) for fast, offline speech recognition (no GPU or internet required), coupled with `ffmpeg` for automatic audio extraction and normalization.
+* **Deep AI Note Synthesis**: Integrates DeepSeek LLM to restructure spoken transcriptions into structured study notes while preserving technical derivations, intuition, and illustrations.
+* **Native Desktop Client**: Includes a standalone `.exe` for Windows and one-click launcher for macOS, complete with in-app settings management.
 
-## 功能
+---
 
-### 语音转录 (`transcribe.py`)
-- 自动提取视频中的音频（16kHz 单声道 WAV）
-- 使用 Whisper 模型进行语音识别（支持中/英/日等 99 种语言）
-- 生成带时间戳的原始转录 Markdown
-- 可选提取关键帧（场景检测），按时间戳嵌入笔记作为图示
+## 🌟 Key Features
 
-### 笔记整理 (`summarize.py` / `summarizer/` 包)
-- 调用 DeepSeek v4 Pro API，将转录全文整理为结构化学习笔记
-- 两套提示词风格：
-  - **通用**：适合一般技术内容，修正错字、提炼要点、去除冗余
-  - **理工科**：适合数理课程，保留推导过程、直觉解释、公式、类比和作者风格
-- 自动修正同音错字、去除口语冗余、提炼核心要点
-- 按逻辑重新分段，添加标题层级
-- 保留全部技术术语和专业内容
-- 末尾附「核心要点」总结
-- 自动处理超长文本（分块 + 合并）
+### 1. High-Precision Speech Transcription (`transcribe.py`)
+- Automatically extracts 16kHz 16-bit mono WAV audio from MP4 videos.
+- Transcribes speech using Whisper models supporting 99+ languages (Chinese, English, Japanese, etc.).
+- Generates raw transcripts with accurate segment timestamps.
+- **Optional Keyframe Extraction**: Utilizes `ffmpeg` scene detection to extract representative frames and embed them directly into the Markdown notes.
 
-### 全流程脚本 (`run_all.py`)
-- 一键执行「转码 → 整理」两个步骤
-- 适合批量处理多个视频
+### 2. Deep Academic Note Synthesis (`summarize.py` / `summarizer/` package)
+- Formats unstructured transcripts into coherent academic notes using DeepSeek LLM.
+- **Multiple Note Styles**:
+  - **STEM / Theoretical Derivations**: Preserves mathematical and physical derivations step-by-step, intuitive physical analogies, LaTeX formulas, and ASCII diagrams without skipping steps or omitting examples.
+  - **Mechanisms & Architecture**: Focuses on system bottlenecks, topological flowcharts, algorithms, and practical debugging guides.
+  - **General**: Fixes homophone typos, cleans spoken redundancies, and organizes content into hierarchical sections with key summaries.
+- Handles ultra-long video transcripts via chunking and intelligent hierarchical merging.
 
-### Web 前端 (`web/`)
-- 现代化 React SPA 界面，拖拽上传视频
-- 转录语言可选：中文 / English / 自动检测
-- 笔记风格可选：通用 / 理工科
-- 实时进度条追踪转录 / 整理任务
-- 转录全文阅读 & 时间戳视图切换
-- 结构化学习笔记 Markdown 渲染
-- 暗色模式自适应
+### 3. Cross-Platform Desktop Client (`desktop/` / `release/`)
+- **Windows Standalone Executable**: Pre-assembled at `release/VideoExtract-win-x64/VideoExtract.exe`. Instant startup by double-clicking—no terminal or Node.js environment required.
+- **macOS Native Integration**: Run via `./start_desktop.sh` with native frameless traffic light window buttons.
+- **GUI Settings Panel**: Configure DeepSeek API keys, LLM models, and Whisper models directly in the UI without editing configuration files.
+- **One-Click Directory Navigation**: Open the `output/` folder and explore generated notes with a single click.
 
-### 通用特性
-- 音频缓存：同一视频音频只提取一次
-- 增量处理：`--skip-existing` 跳过已处理文件
-- 关键帧提取（可选）：ffmpeg 场景检测，按时间戳嵌入笔记
-- uv 一键配置环境
+### 4. Interactive Web Interface (`web/`)
+- Built with React 19 and Tailwind CSS.
+- Drag-and-drop video upload with real-time task progress tracking.
+- Split-screen comparison view: read raw transcripts (with timestamp view) side-by-side with rendered Markdown notes.
 
-## 文件夹架构
+---
+
+## 📂 Project Architecture
 
 ```
 vedio_extract/
-├── setup.sh                       # 一键环境配置脚本 (uv + tools)
-├── run_all.py                     # 全流程脚本 (转码 → 整理)
-├── transcribe.py                  # 视频转码脚本
-├── summarize.py                   # 笔记整理脚本
-├── summarizer/                    # 笔记整理 Python 包
-│   ├── __init__.py                # 包入口
-│   ├── api.py                     # DeepSeek API 客户端
-│   ├── prompts.py                 # 提示词模板
-│   ├── processor.py               # 核心处理逻辑
-│   └── io.py                      # 文件读写
-├── config.yaml                    # 全局配置文件（模型、API、服务器等）
-├── config.py                      # 配置加载模块
-├── requirements.txt               # Python 依赖
-├── README.md                      # 本文件
-├── vedio/                         # [用户] 放入待转录的 .mp4 视频
-├── output/                        # [输出] 转录 .md 和笔记 .note.md
-├── audio_temp/                    # [缓存] 提取的中间音频文件 (WAV)
-├── tools/
-│   ├── whisper-cpp/Release/       # whisper.cpp 预编译二进制
-│   ├── ffmpeg/                    # ffmpeg 静态构建
-│   └── ggml-small.bin            # Whisper 模型文件
-├── web/                           # Web 应用
+├── start_desktop.bat              # Windows desktop client one-click launcher
+├── start_desktop.sh               # macOS / Linux desktop client one-click launcher
+├── desktop_app.py                 # Standalone Python App-Mode fallback launcher
+├── setup.sh                       # One-click environment installer (uv + binaries)
+├── run_all.py                     # Full end-to-end CLI pipeline (transcribe -> summarize)
+├── transcribe.py                  # Video transcription CLI script
+├── summarize.py                   # Note summarization CLI script
+├── summarizer/                    # Note summarization Python package
+│   ├── __init__.py
+│   ├── api.py                     # DeepSeek API client (via requests)
+│   ├── prompts.py                 # Structured system prompts (General / STEM / Architecture)
+│   ├── processor.py               # Text chunking, API orchestration, and merging
+│   └── io.py                      # Markdown reading and note writing
+├── desktop/                       # Electron desktop client source code
+│   ├── main.cjs                   # Main process (window management, native dialogs)
+│   ├── preload.cjs                # Context bridge IPC
+│   ├── pythonManager.cjs          # Python backend lifecycle manager
+│   ├── build.cjs                  # Windows standalone .exe packager
+│   └── package.json
+├── release/                       # [Build Artifacts] Packaged standalone desktop app
+│   └── VideoExtract-win-x64/      # Standalone Windows executable package
+├── web/                           # Web application
 │   ├── backend/
-│   │   ├── server.py              # Flask API 服务器
-│   │   └── tasks.py               # 异步任务管理（线程池）
-│   └── frontend/
+│   │   ├── server.py              # Flask API server
+│   │   └── tasks.py               # Thread pool asynchronous task runner
+│   └── frontend/                  # React 19 SPA frontend
 │       ├── src/
-│       │   ├── App.jsx            # React SPA 主组件
-│       │   ├── api.js             # API 请求封装
+│       │   ├── App.jsx            # Main application UI
+│       │   ├── api.js             # API client & desktop bridge calls
 │       │   └── components/
-│       │       ├── Layout.jsx     # 页面布局（导航栏/页脚）
-│       │       └── UploadZone.jsx # 拖拽上传组件
-│       ├── dist/                  # 前端构建产物
-│       └── vite.config.js         # Vite 配置（含代理）
-└── .venv/                         # Python 虚拟环境 (uv 管理)
+│       │       ├── Layout.jsx     # Header navigation & folder shortcut
+│       │       ├── SettingsModal.jsx # Visual configuration modal
+│       │       └── UploadZone.jsx # Drag-and-drop upload component
+│       └── dist/                  # Static frontend build artifacts
+├── config.yaml                    # Local configuration file (API keys, models, server)
+├── config.example.yaml            # Configuration template
+├── config.py                      # Centralized configuration loader
+├── requirements.txt               # Python package dependencies
+├── README.md                      # English documentation (This file)
+└── README_CN.md                   # Chinese documentation
 ```
 
-## 环境依赖
+---
 
-### 运行时
+## 🚀 Quick Start
 
-| 组件 | 用途 | 来源 |
-|---|---|---|
-| **Python 3.11+** | 脚本运行环境 | uv 自动管理 |
-| **whisper.cpp** | 语音识别引擎 | setup.sh 自动下载 |
-| **ffmpeg** | 视频音频提取 | setup.sh 自动下载 |
-| **ggml-*.bin** | Whisper 模型权重 | setup.sh 自动下载 |
-| **requests** | DeepSeek API 调用 (HTTP) | setup.sh 自动安装 |
-| **flask** | Web API 服务器 | setup.sh 自动安装 |
-| **flask-cors** | 跨域支持 | setup.sh 自动安装 |
-| **pyyaml** | 配置文件解析 | setup.sh 自动安装 |
-| **Node.js / npm** | 前端构建 (可选) | 手动安装 |
+### Option A: Native Desktop App (Recommended)
 
-### Python 依赖
-
+#### Windows
+Simply double-click the pre-built binary:
+```text
+release/VideoExtract-win-x64/VideoExtract.exe
 ```
-requests>=2.25.0
-flask>=3.0.0
-flask-cors>=4.0.0
-imageio-ffmpeg>=0.5.0
-pyyaml>=6.0
-```
+Or run [`start_desktop.bat`](start_desktop.bat).
 
-`transcribe.py` 仅使用标准库，无需额外 pip 包。`summarizer/api.py` 使用 `requests` 直调 DeepSeek API（HTTP 请求），避免 C 扩展依赖。`flask` 用于 Web API 服务器。
-
-### 前端依赖
-
-| 组件 | 用途 |
-|---|---|
-| **React 19** | UI 框架 |
-| **React Router 7** | 客户端路由 |
-| **Tailwind CSS v4** | 原子化 CSS 框架 |
-| **Vite 8** | 前端构建工具 |
-| **lucide-react** | 图标库（预留） |
-
-## 快速开始
-
-### 1. 一键配置环境
-
+#### macOS / Linux
+Grant execution permission and run:
 ```bash
-# 使用默认 small 模型（推荐，466MB，中英文均表现良好）
+chmod +x start_desktop.sh
+./start_desktop.sh
+```
+
+#### Standalone Python App Mode (Zero Node.js dependency)
+Launch the native window directly via Python:
+```bash
+python desktop_app.py
+```
+
+---
+
+### Option B: Command Line Interface (CLI)
+
+#### 1. Setup Environment
+```bash
+# Using the default 'small' model (recommended, 466MB, balanced speed & accuracy)
 bash setup.sh
 
-# 或指定其他模型
-bash setup.sh medium           # 更大更准 (1.5GB)
-bash setup.sh base             # 更小更快 (148MB)
-bash setup.sh large-v3-turbo   # 最强 (1.6GB)
+# Or specify a different model size:
+bash setup.sh medium           # 1.5GB, higher accuracy
+bash setup.sh large-v3-turbo   # 1.6GB, best performance
 ```
 
-`setup.sh` 会自动完成：
-- 安装 [uv](https://docs.astral.sh/uv/)（Python 包管理器）
-- 创建 Python 3.11 虚拟环境
-- 安装 pip 依赖（flask, requests 等）
-- 下载 whisper.cpp 预编译二进制
-- 下载 Whisper 模型文件
-- 下载 ffmpeg 静态构建
+`setup.sh` automatically installs [uv](https://docs.astral.sh/uv/), sets up Python 3.11 virtual environment, downloads pre-compiled `whisper.cpp` binaries, `ffmpeg`, and the specified model weights.
 
-### 2. 放入视频
+#### 2. Set DeepSeek API Key
+Copy the configuration template and add your API key:
+```bash
+cp config.example.yaml config.yaml
+```
+Alternatively, set the environment variable:
+```bash
+export DEEPSEEK_API_KEY="sk-your-key-here"
+```
 
-将待转录的 `.mp4` 文件放入 `vedio/` 文件夹。
-
-### 3. 运行
+#### 3. Run Pipeline
+Place your `.mp4` video files into the `vedio/` directory, then run:
 
 ```bash
-# --- 方式一：全流程一键运行（推荐）---
+# Run full pipeline: transcription + note generation
 uv run python run_all.py --language zh
 
-# --- 方式二：分步运行 ---
-# Step 1: 视频转码
+# Or step-by-step:
+# Step 1: Transcribe video
 uv run python transcribe.py --language zh
 
-# Step 2: 整理为学习笔记
-uv run python summarize.py output/
-
-# --- 方式三：仅转码 ---
-uv run python run_all.py --language zh --skip-summarize
+# Step 2: Generate notes (choose style: general / stem)
+uv run python summarize.py output/ --style stem
 ```
 
-### 4. 查看结果
+Output files:
+- `output/<video_name>.md`: Raw speech transcript with timestamps.
+- `output/<video_name>.note.md`: Structured AI study note.
 
-| 输出文件 | 说明 |
-|---|---|
-| `output/<视频名>.md` | 原始转录（全文 + 时间戳） |
-| `output/<视频名>.note.md` | 结构化学习笔记 |
+---
 
-### 5. (可选) 启动 Web 界面
+### Option C: Web Interface
 
 ```bash
-# 构建前端（首次或前端代码修改后需要）
+# Build frontend (if modified)
 cd web/frontend && npm install && npm run build && cd ../..
 
-# 启动后端服务器
+# Start backend server
 uv run python web/backend/server.py
 
-# 浏览器访问 http://localhost:8765
+# Open your browser at
+http://localhost:8765
 ```
 
-Web 界面功能：
-- **拖拽上传** .mp4 视频
-- **一键转码**：启动语音识别任务，实时进度条，可选择转录语言
-- **一键整理**：启动 AI 笔记整理任务，可选择「通用」或「理工科」风格
-- **在线查看**：转录全文 / 时间戳视图切换
-- **笔记阅读**：结构化学习笔记 Markdown 渲染
+---
 
-## 配置说明
+## ⚙️ Configuration (`config.yaml`)
 
-所有可配置项集中在项目根目录的 `config.yaml` 中，修改后立即生效，无需改动代码：
+All runtime options are centralized in `config.yaml`. Environment variables override file settings:
 
 ```yaml
-# config.yaml
 deepseek:
-  api_key: ""                         # 留空则读取环境变量 DEEPSEEK_API_KEY
+  api_key: ""                         # Falls back to DEEPSEEK_API_KEY environment variable
   base_url: "https://api.deepseek.com"
   model: "deepseek-v4-pro"
   max_chars_per_chunk: 30000
 
 whisper:
-  model: "small"                      # 默认语音识别模型
+  model: "small"                      # Default Whisper model
 
 keyframe:
-  scene_threshold: 0.3                # 场景检测灵敏度
-  max_frames: 20                      # 最多提取帧数
+  scene_threshold: 0.3                # Scene detection sensitivity (0.0 - 1.0)
+  max_frames: 20                      # Maximum extracted keyframes per video
 
 server:
   host: "0.0.0.0"
   port: 8765
 ```
 
-| 配置方式 | 优先级 | 说明 |
-|---|---|---|
-| 环境变量 `DEEPSEEK_API_KEY` | 最高 | 覆盖 config.yaml 中的 api_key |
-| `config.yaml` | 默认 | 修改后即时生效 |
-| CLI 参数 `--api-key` / `--model` | 运行时可覆盖 | 优先级高于配置文件 |
+---
 
-### 更改模型
+## 📊 Whisper Model Comparison
 
-```bash
-# 方法一：修改 config.yaml
-# whisper.model: "medium"
+| Model | Disk Size | Transcription Speed | Accuracy | Recommended Use Case |
+|:---|:---|:---|:---|:---|
+| `tiny` | 78 MB | Extremely Fast | Basic | Quick drafts, short testing clips |
+| `base` | 148 MB | Very Fast | Good | Casual conversations |
+| `small` | 466 MB | Moderate | Great | **Default Choice**, optimal balance for lectures |
+| `medium` | 1.5 GB | Slower | Excellent | Noisy audio, specialized domain vocabulary |
+| `large-v3-turbo` | 1.6 GB | Moderate | Superior | Complex multilingual videos |
+| `large-v3` | 3.1 GB | Slow | Maximum | Highest fidelity transcription |
 
-# 方法二：CLI 参数覆盖
-uv run python transcribe.py --model medium --language zh
-```
+---
 
-## 使用说明
+## 📄 License
 
-### transcribe.py —— 视频转码
-
-```
-用法: uv run python transcribe.py [选项]
-
-选项:
-  --model MODEL       Whisper 模型 (默认: small)
-                      可选: tiny, base, small, medium, large-v3, large-v3-turbo
-  --language LANG     语言代码 (zh/en/ja...)，不指定则自动检测
-  --threads N         线程数 (默认: CPU 核心数)
-  --skip-existing     跳过 output/ 中已有同名 .md 的视频
-  --extract-frames    提取关键帧并嵌入笔记（场景检测，默认不提取）
-```
-
-### summarize.py —— 笔记整理
-
-```
-用法: uv run python summarize.py <文件或目录> [选项]
-
-参数:
-  target              转录 .md 文件或 output/ 目录
-
-选项:
-  --api-key KEY       DeepSeek API key (默认读取 DEEPSEEK_API_KEY)
-  --model MODEL       LLM 模型 (默认: deepseek-v4-pro)
-  --style STYLE       笔记风格: general (通用) / stem (理工科) (默认: general)
-  --skip-existing     跳过已有 .note.md 的文件
-  --output-dir DIR    笔记输出目录 (默认与转录文件同目录)
-```
-
-### run_all.py —— 全流程
-
-```
-用法: uv run python run_all.py [选项]
-
-选项:
-  --language LANG     语言代码 (zh/en/ja...)
-  --model MODEL       Whisper 模型 (默认: small)
-  --api-key KEY       DeepSeek API key
-  --llm-model MODEL   LLM 模型 (默认: deepseek-v4-pro)
-  --style STYLE       笔记风格: general (通用) / stem (理工科) (默认: general)
-  --skip-existing     跳过已处理的文件
-  --skip-summarize    仅转码，不整理笔记
-  --extract-frames    提取关键帧并嵌入笔记
-```
-
-### 模型选择指南
-
-| 模型 | 大小 | 速度 | 准确率 | 适用场景 |
-|---|---|---|---|---|
-| `tiny` | 78 MB | 极快 | 一般 | 快速预览，短片段 |
-| `base` | 148 MB | 快 | 尚可 | 简单对话 |
-| `small` | 466 MB | 适中 | 良好 | **推荐默认**，技术内容可用 |
-| `medium` | 1.5 GB | 较慢 | 很好 | 需要高准确率的技术讲座 |
-| `large-v3-turbo` | 1.6 GB | 慢 | 最佳 | 重要内容归档，专业术语多 |
-| `large-v3` | 3.1 GB | 很慢 | 最好 | 极致准确率要求 |
-
-## 代码逻辑
-
-### transcribe.py —— 三步流水线
-
-**第 1 步：音频提取** (`extract_audio`)
-```bash
-ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 16000 -ac 1 -y audio.wav
-```
-丢弃视频流，编码为 16-bit PCM 单声道 16kHz WAV，缓存到 `audio_temp/`。
-
-**第 2 步：语音识别** (`transcribe_with_whisper_cpp`)
-```bash
-whisper-cli -m model.bin -f audio.wav -ocsv -of output_prefix
-```
-调用 whisper.cpp CLI 输出 CSV（`start_ms, end_ms, text`），实时回显进度，解析为 segment 列表。
-
-**第 3 步：生成笔记** (`build_markdown`)
-- 拼接所有 segment 为连续全文
-- 逐段输出带时间戳文本
-- 若启用关键帧提取，按时间戳将帧图片嵌入对应段落
-- 末尾追加「关键图示」章节列出全部帧
-- 写入 `output/<视频名>.md`
-
-**可选：关键帧提取** (`extract_keyframes`)
-```bash
-ffmpeg -i video.mp4 -vf "select='gt(scene,0.3)',showinfo" -vsync vfr -f null NUL
-# 解析场景变化时间戳 → 选取 top 20 代表性时刻 → 逐帧提取 JPEG
-```
-- 第一遍：场景检测，获取变化点时间戳列表
-- 第二遍：逐时刻 `-ss` seek 提取帧，输出到 `output/frames/<视频名>/`
-- 通过 `--extract-frames` 启用，前端通过「帧」开关控制
-
-### summarizer/ 包 —— 模块架构
-
-```
-summarizer/
-├── api.py        # DeepSeek API 客户端（requests 直调 DeepSeek API）
-├── prompts.py    # 提示词模板（通用 SYSTEM_PROMPT / 理工科 STEM_SYSTEM_PROMPT + build_user_prompt）
-├── processor.py  # 核心逻辑：文本分块 → API 调用 → 结果合并，支持 style 参数切换提示词
-└── io.py         # 文件 IO：reads transcript from .md, writes .note.md
-```
-
-**调用流程**：
-
-```
-process_file(md_path)
-  │
-  ├─ io.read_transcript_text()          # 从 .md 提取「转录全文」
-  ├─ io.read_metadata()                 # 读取标题、时长
-  │
-  └─ summarize_transcript(text, title)
-       │
-       ├─ _split_text()                 # 超长文本按段落分块
-       │
-       ├─ for each chunk:
-       │     api.chat(client, prompt)   # 调用 DeepSeek API
-       │
-       └─ _merge_chunk_results()        # 多块结果二次合并整理
-             │
-             └─ io.write_note()         # 写入 .note.md
-```
-
-**提示词设计思路**：
-- 两套 System prompt，通过 `--style` 或前端开关切换：
-  - **通用 (general)**：角色为学术笔记整理专家，六项职责（修正错误、结构化、提炼要点、保留术语、去冗余、加小结）
-  - **理工科 (stem)**：角色为数理工科视频笔记整理专家，重点保留推导过程、直觉解释、公式、类比、作者风格，不压缩结论，推荐章节结构与通用不同
-- User prompt 传入视频标题和转录全文
-- 使用 `reasoning_effort="high"` 和 `thinking: enabled` 提升整理质量
-
-## 手动配置（不使用 setup.sh）
-
-```bash
-# 1. 创建虚拟环境并安装依赖
-uv venv --python 3.11
-uv pip install -r requirements.txt
-
-# 2. 创建工具目录
-mkdir -p tools/whisper-cpp/Release tools/ffmpeg
-
-# 3. 下载 whisper.cpp
-# https://github.com/ggml-org/whisper.cpp/releases
-# 解压 whisper-cli 到 tools/whisper-cpp/Release/
-
-# 4. 下载模型
-# https://huggingface.co/ggerganov/whisper.cpp
-# 将 ggml-small.bin 放入 tools/
-
-# 5. 下载 ffmpeg
-# https://www.gyan.dev/ffmpeg/builds/ (Windows)
-# 将 ffmpeg 放入 tools/ffmpeg/
-
-# 6. 设置 API key
-export DEEPSEEK_API_KEY="sk-xxx"
-
-# 7. 运行
-uv run python run_all.py --language zh
-```
+This project is licensed under the [MIT License](LICENSE).
