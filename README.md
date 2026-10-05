@@ -6,7 +6,7 @@ Batch transcribe MP4 videos into high-precision Markdown documents, and transfor
 
 * **Local Offline Engine**: Powered by [whisper.cpp](https://github.com/ggml-org/whisper.cpp) for fast, offline speech recognition (no GPU or internet required), coupled with `ffmpeg` for automatic audio extraction and normalization.
 * **Deep AI Note Synthesis**: Integrates DeepSeek LLM to restructure spoken transcriptions into structured study notes while preserving technical derivations, intuition, and illustrations.
-* **Native Desktop Client**: Includes a standalone `.exe` for Windows and one-click launcher for macOS, complete with in-app settings management.
+* **Native Desktop Client**: Includes a standard Windows **NSIS Setup Installer** (`.exe`), a portable ZIP package, and a one-click launcher for macOS, complete with in-app settings management.
 
 ---
 
@@ -27,7 +27,8 @@ Batch transcribe MP4 videos into high-precision Markdown documents, and transfor
 - Handles ultra-long video transcripts via chunking and intelligent hierarchical merging.
 
 ### 3. Cross-Platform Desktop Client (`desktop/` / `release/`)
-- **Windows Standalone Executable**: Pre-assembled at `release/VideoExtract-win-x64/VideoExtract.exe`. Instant startup by double-clicking—no terminal or Node.js environment required.
+- **Windows Native Setup Installer**: Standard Windows installer (`Video Extract Setup 1.0.0.exe`, ~80MB) featuring an installation wizard, customizable installation directory, Start Menu and Desktop shortcuts, and Control Panel uninstaller registration.
+- **Portable Edition**: Pre-assembled portable executable at `release/VideoExtract-win-x64/VideoExtract.exe` and ZIP archive `release/VideoExtract-Windows-x64.zip` for instant zero-install use.
 - **macOS Native Integration**: Run via `./start_desktop.sh` with native frameless traffic light window buttons.
 - **GUI Settings Panel**: Configure DeepSeek API keys, LLM models, and Whisper models directly in the UI without editing configuration files.
 - **One-Click Directory Navigation**: Open the `output/` folder and explore generated notes with a single click.
@@ -61,9 +62,11 @@ vedio_extract/
 │   ├── preload.cjs                # Context bridge IPC
 │   ├── pythonManager.cjs          # Python backend lifecycle manager
 │   ├── build.cjs                  # Windows standalone .exe packager
-│   └── package.json
-├── release/                       # [Build Artifacts] Packaged standalone desktop app
-│   └── VideoExtract-win-x64/      # Standalone Windows executable package
+│   └── package.json               # Desktop dependencies and NSIS packaging config
+├── release/                       # [Build Artifacts] Packaged desktop client
+│   ├── Video Extract Setup 1.0.0.exe # Windows native NSIS Setup installer (~80 MB)
+│   ├── VideoExtract-Windows-x64.zip  # Windows portable distribution ZIP (~115 MB)
+│   └── VideoExtract-win-x64/         # Unpacked portable executable folder (~188 MB)
 ├── web/                           # Web application
 │   ├── backend/
 │   │   ├── server.py              # Flask API server
@@ -91,21 +94,28 @@ vedio_extract/
 
 ### Option A: Native Desktop App (Recommended)
 
-#### Windows
-Simply double-click the pre-built binary:
+#### 1. Windows Native Installer (Standard Setup)
+Download or run the setup installer:
 ```text
-release/VideoExtract-win-x64/VideoExtract.exe
+release/Video Extract Setup 1.0.0.exe
 ```
-Or run [`start_desktop.bat`](start_desktop.bat).
+Follow the installation wizard to choose the destination directory. The installer will automatically:
+- Create desktop shortcuts and Start Menu entries.
+- Register an uninstaller in Windows Settings / Control Panel.
 
-#### macOS / Linux
+#### 2. Windows Portable / Direct Launch
+- **Double-click**: [`release/VideoExtract-win-x64/VideoExtract.exe`](file:///d:/WYS%20files/Operation/vedio_extract/release/VideoExtract-win-x64/VideoExtract.exe)
+- **Or run script**: [`start_desktop.bat`](start_desktop.bat)
+- **Or extract ZIP**: `release/VideoExtract-Windows-x64.zip` on any x64 Windows machine.
+
+#### 3. macOS / Linux
 Grant execution permission and run:
 ```bash
 chmod +x start_desktop.sh
 ./start_desktop.sh
 ```
 
-#### Standalone Python App Mode (Zero Node.js dependency)
+#### 4. Standalone Python App Mode (Zero Node.js dependency)
 Launch the native window directly via Python:
 ```bash
 python desktop_app.py
@@ -169,6 +179,23 @@ uv run python web/backend/server.py
 
 # Open your browser at
 http://localhost:8765
+```
+
+---
+
+## 🛠️ Desktop Packaging Commands
+
+To recompile or package the desktop client after modifying code:
+
+```bash
+# Package the native Windows NSIS Setup installer (Video Extract Setup 1.0.0.exe)
+npm run build:installer
+
+# Assemble the portable unpacked binary folder (release/VideoExtract-win-x64)
+npm run build:exe
+
+# Rebuild frontend assets only
+npm run build:frontend
 ```
 
 ---

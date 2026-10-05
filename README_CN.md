@@ -6,7 +6,7 @@
 
 * **本地离线引擎**：基于 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 进行语音识别（无需联网、无需高端 GPU），配合 ffmpeg 自动进行高质量音频预处理。
 * **智能深度整理**：调用 DeepSeek LLM 将原始口语转录重构为结构清晰、保留公式推导与图表的专业笔记。
-* **全平台原生桌面支持**：提供 Windows 独立 `.exe` 安装运行包，macOS 独立运行环境，支持全局热配置。
+* **全平台原生桌面支持**：提供 Windows 原生 **NSIS 安装向导安装包**（`.exe`）、绿色便携版、macOS 独立运行环境，支持图形化全局热配置。
 
 ---
 
@@ -27,10 +27,11 @@
 - 自动分块处理超长文本并智能合并
 
 ### 3. 跨平台桌面客户端 (`desktop/` / `release/`)
-- **Windows 原生可执行程序**：预构建好的独立程序 `release/VideoExtract-win-x64/VideoExtract.exe`，无需配置复杂的终端环境，双击秒开
-- **macOS 原生适配**：一键运行脚本 `./start_desktop.sh`，支持原生无边框红绿灯交通灯按键
-- **可视化设置面板**：无需编辑配置文件，在界面中直接填入 DeepSeek API Key、修改 LLM 模型名称与 Whisper 模型大小
-- **本地目录一键直达**：支持在界面中直接打开 `output/` 输出目录与文件管理
+- **Windows 原生安装程序 (Setup)**：标准的 Windows 安装向导 `release/Video Extract Setup 1.0.0.exe`（约 80MB），支持自定义安装目录，自动创建桌面和开始菜单图标，注册控制面板卸载程序。
+- **免安装绿色便携版**：解压即用目录 `release/VideoExtract-win-x64/VideoExtract.exe` 及压缩包 `release/VideoExtract-Windows-x64.zip`。
+- **macOS 原生适配**：一键运行脚本 `./start_desktop.sh`，支持原生无边框红绿灯交通灯按键。
+- **可视化设置面板**：无需编辑配置文件，在界面中直接填入 DeepSeek API Key、修改 LLM 模型名称与 Whisper 模型大小。
+- **本地目录一键直达**：支持在界面中直接打开 `output/` 输出目录与文件管理。
 
 ### 4. Web 前端界面 (`web/`)
 - 现代化 React 19 + Tailwind CSS SPA 界面
@@ -61,9 +62,11 @@ vedio_extract/
 │   ├── preload.cjs                # 安全 IPC 通信桥
 │   ├── pythonManager.cjs          # Python 后端生命周期管理
 │   ├── build.cjs                  # Windows .exe 打包组装工具
-│   └── package.json
-├── release/                       # [构建产物] 打包好的独立桌面客户端
-│   └── VideoExtract-win-x64/      # Windows 原生程序 (含 VideoExtract.exe)
+│   └── package.json               # 桌面端依赖与 NSIS 打包配置
+├── release/                       # [构建产物] 打包好的桌面客户端
+│   ├── Video Extract Setup 1.0.0.exe # Windows 原生 NSIS 安装程序 (~80 MB)
+│   ├── VideoExtract-Windows-x64.zip  # Windows 便携分发 ZIP 压缩包 (~115 MB)
+│   └── VideoExtract-win-x64/         # Windows 解压即用免安装程序 (~188 MB)
 ├── web/                           # Web 应用
 │   ├── backend/
 │   │   ├── server.py              # Flask API 后端服务器
@@ -91,21 +94,26 @@ vedio_extract/
 
 ### 选项 A：使用原生桌面客户端（最便捷）
 
-#### Windows
-直接双击运行：
+#### 1. Windows 原生安装包（推荐普通用户）
+直接运行安装向导：
 ```text
-release/VideoExtract-win-x64/VideoExtract.exe
+release/Video Extract Setup 1.0.0.exe
 ```
-或者双击项目根目录下的 [`start_desktop.bat`](start_desktop.bat)。
+安装向导将引导您选择安装路径，并自动在桌面与开始菜单创建快捷方式。
 
-#### macOS / Linux
+#### 2. Windows 便携版 / 直接运行
+- **直接双击**：[`release/VideoExtract-win-x64/VideoExtract.exe`](file:///d:/WYS%20files/Operation/vedio_extract/release/VideoExtract-win-x64/VideoExtract.exe)
+- **或运行脚本**：双击项目根目录下的 [`start_desktop.bat`](start_desktop.bat)
+- **便携压缩包**：将 `release/VideoExtract-Windows-x64.zip` 发送到任意 64 位 Windows 电脑解压即用。
+
+#### 3. macOS / Linux
 赋予执行权限后运行启动脚本：
 ```bash
 chmod +x start_desktop.sh
 ./start_desktop.sh
 ```
 
-#### 极简模式（无需 Node.js）
+#### 4. 极简模式（无需 Node.js）
 直接运行 Python 独立窗口模式：
 ```bash
 python desktop_app.py
@@ -154,11 +162,31 @@ uv run python summarize.py output/ --style stem
 ### 选项 C：本地 Web 服务
 
 ```bash
+# 构建前端（若有源码变动）
+cd web/frontend && npm install && npm run build && cd ../..
+
 # 启动 Flask 后台服务
 uv run python web/backend/server.py
 
 # 浏览器访问
 http://localhost:8765
+```
+
+---
+
+## 🛠️ 桌面端打包命令
+
+修改代码后，可通过以下命令重新打包分发：
+
+```bash
+# 一键构建 Windows 原生 NSIS 安装包 (Video Extract Setup 1.0.0.exe)
+npm run build:installer
+
+# 组装免安装独立可执行文件夹 (release/VideoExtract-win-x64)
+npm run build:exe
+
+# 单独构建前端静态资产
+npm run build:frontend
 ```
 
 ---
